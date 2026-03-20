@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth/config";
 import { encodePipelineStream } from "@/lib/ai/pipeline";
-import { saveExplanationWithUsage, getMonthlyUsage } from "@/lib/db/queries/explanations";
+import { saveExplanation } from "@/lib/db/queries/explanations";
 import { encrypt } from "@/lib/encryption/at-rest";
 import type { AudienceLevel, ExplainMode, ExplanationResult } from "@/types/explanation";
-
-const FREE_MONTHLY_LIMIT = 999999; // unlimited — app is free for everyone
 
 const schema = z.object({
   code: z.string().min(1).max(50000),
@@ -23,15 +20,6 @@ export async function POST(req: NextRequest) {
   }
 
   const { code, audienceLevel, outputLanguage, privacyMode } = parsed.data;
-  const session = await auth();
-  const userId = session?.user?.id;
-
-  if (userId) {
-    const usage = await getMonthlyUsage(userId);
-    if (usage >= FREE_MONTHLY_LIMIT) {
-      return NextResponse.json({ error: "Monthly limit reached" }, { status: 429 });
-    }
-  }
 
   const pipelineStream = encodePipelineStream({
     code,
@@ -47,7 +35,6 @@ export async function POST(req: NextRequest) {
     async start(controller) {
       const reader = pipelineStream.getReader();
       let fullResult: ExplanationResult | null = null;
-      let savedId: string | undefined;
 
       try {
         while (true) {
@@ -56,7 +43,6 @@ export async function POST(req: NextRequest) {
 
           const chunk = decoder.decode(value, { stream: true });
 
-          // Parse SSE events to capture the final result
           for (const line of chunk.split("\n")) {
             if (line.startsWith("data: ")) {
               try {
@@ -71,15 +57,13 @@ export async function POST(req: NextRequest) {
           controller.enqueue(value);
         }
 
-        // Save to DB after stream completes (transactionally)
-        if (fullResult && userId && !privacyMode) {
+        // Save to DB after stream completes (skip if privacyMode)
+        if (fullResult && !privacyMode) {
           try {
             const encryptedCode = await encrypt(code);
-            const saved = await saveExplanationWithUsage({
-              userId,
+            const saved = await saveExplanation({
               audienceLevel: audienceLevel as AudienceLevel,
               mode: "STANDARD" as ExplainMode,
-              privacyMode,
               outputLanguage,
               codeSnippetEnc: encryptedCode.enc,
               codeSnippetIv: encryptedCode.iv,
@@ -92,10 +76,8 @@ export async function POST(req: NextRequest) {
               layer1Confidence: fullResult.layer1Confidence,
               layer3Passed: fullResult.layer3Passed,
             });
-            savedId = saved.id;
-            // Emit the saved ID so client can use it for share/QA
             controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ type: "savedId", savedId })}\n\n`)
+              encoder.encode(`data: ${JSON.stringify({ type: "savedId", savedId: saved.id })}\n\n`)
             );
           } catch (err) {
             console.error("Failed to save explanation:", err);

@@ -4,7 +4,6 @@ import { streamQAAnswer } from "@/lib/ai/qa";
 import { getExplanationById } from "@/lib/db/queries/explanations";
 import { decrypt } from "@/lib/encryption/at-rest";
 import { prisma } from "@/lib/db/client";
-import { auth } from "@/lib/auth/config";
 
 const schema = z.object({
   explanationId: z.string().cuid(),
@@ -19,16 +18,10 @@ export async function POST(req: NextRequest) {
   }
 
   const { explanationId, question } = parsed.data;
-  const session = await auth();
 
   const explanation = await getExplanationById(explanationId);
   if (!explanation) {
     return NextResponse.json({ error: "Explanation not found" }, { status: 404 });
-  }
-
-  // Authorization: explanation must belong to the requesting user (or be public / no owner)
-  if (explanation.userId && explanation.userId !== session?.user?.id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // Decrypt code if available
@@ -53,7 +46,6 @@ export async function POST(req: NextRequest) {
     { role: "user" as const, content: question },
   ];
 
-  // Save user message before streaming
   await prisma.qAMessage.create({
     data: { explanationId, role: "user", content: question },
   });
