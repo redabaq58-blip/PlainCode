@@ -3,9 +3,7 @@ import { BookOpen, Layers, Lightbulb, Database } from "lucide-react";
 import { SectionCard } from "./SectionCard";
 import { ConfidenceScore } from "./ConfidenceScore";
 import { FlowDiagram } from "./FlowDiagram";
-import { ShareButton } from "./ShareButton";
 import { QAChat } from "./QAChat";
-import type { ExplanationResult } from "@/types/explanation";
 
 interface StreamState {
   currentSection: string;
@@ -23,10 +21,10 @@ interface StreamState {
 
 interface Props {
   stream: StreamState;
-  savedId?: string;
+  code?: string;
 }
 
-export function ExplanationPanel({ stream, savedId }: Props) {
+export function ExplanationPanel({ stream, code = "" }: Props) {
   const { sections, currentSection, confidence, done, error } = stream;
 
   if (error) {
@@ -38,6 +36,10 @@ export function ExplanationPanel({ stream, savedId }: Props) {
   }
 
   if (!sections.SUMMARY && !currentSection) return null;
+
+  const explanation = [sections.SUMMARY, sections.BREAKDOWN, sections.ANALOGY]
+    .filter(Boolean)
+    .join("\n\n");
 
   return (
     <div className="space-y-3">
@@ -81,13 +83,7 @@ export function ExplanationPanel({ stream, savedId }: Props) {
         <FlowDiagram diagram={sections.MERMAID} />
       )}
 
-      {done && savedId && (
-        <div className="flex items-center justify-end gap-2 pt-1">
-          <ShareButton explanationId={savedId} />
-        </div>
-      )}
-
-      {done && savedId && <QAChat explanationId={savedId} />}
+      {done && <QAChat code={code} explanation={explanation} />}
     </div>
   );
 }

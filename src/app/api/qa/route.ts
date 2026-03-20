@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { streamQAAnswer } from "@/lib/ai/qa";
-import { getExplanationById } from "@/lib/db/queries/explanations";
-import { decrypt } from "@/lib/encryption/at-rest";
-import { prisma } from "@/lib/db/client";
 
 const schema = z.object({
-  explanationId: z.string().cuid(),
+  code: z.string().max(6000).default(""),
+  explanation: z.string().max(3000).default(""),
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string().max(2000),
+  })).max(24).default([]),
   question: z.string().min(1).max(2000),
 });
 
@@ -17,60 +19,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const { explanationId, question } = parsed.data;
+  const { code, explanation, messages, question } = parsed.data;
 
-  const explanation = await getExplanationById(explanationId);
-  if (!explanation) {
-    return NextResponse.json({ error: "Explanation not found" }, { status: 404 });
-  }
-
-  // Decrypt code if available
-  let code = "";
-  if (explanation.codeSnippetEnc && explanation.codeSnippetIv) {
-    try {
-      code = await decrypt(explanation.codeSnippetEnc, explanation.codeSnippetIv);
-    } catch {
-      // Can't decrypt — proceed without code context
-    }
-  }
-
-  // Load Q&A history (last 12 messages to keep context window manageable)
-  const existingMessages = await prisma.qAMessage.findMany({
-    where: { explanationId },
-    orderBy: { createdAt: "asc" },
-    take: 12,
-  });
-
-  const messages = [
-    ...existingMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
-    { role: "user" as const, content: question },
-  ];
-
-  await prisma.qAMessage.create({
-    data: { explanationId, role: "user", content: question },
-  });
-
-  const combinedExplanation = [
-    explanation.summaryText,
-    explanation.breakdownText,
-    explanation.analogyText,
-  ].join("\n\n");
+  const allMessages = [...messages, { role: "user" as const, content: question }];
 
   const encoder = new TextEncoder();
-  let assistantResponse = "";
 
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        for await (const delta of streamQAAnswer(code, combinedExplanation, messages, false)) {
-          assistantResponse += delta;
+        for await (const delta of streamQAAnswer(code, explanation, allMessages, false)) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta })}\n\n`));
         }
-
-        await prisma.qAMessage.create({
-          data: { explanationId, role: "assistant", content: assistantResponse },
-        });
-
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         controller.close();
       } catch (err) {

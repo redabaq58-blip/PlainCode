@@ -9,10 +9,11 @@ interface Message {
 }
 
 interface Props {
-  explanationId: string;
+  code: string;
+  explanation: string;
 }
 
-export function QAChat({ explanationId }: Props) {
+export function QAChat({ code, explanation }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,22 +28,21 @@ export function QAChat({ explanationId }: Props) {
     if (!input.trim() || loading) return;
     const question = input.trim();
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: question }]);
+    const updatedMessages: Message[] = [...messages, { role: "user", content: question }];
+    setMessages([...updatedMessages, { role: "assistant", content: "" }]);
     setLoading(true);
 
     let assistantContent = "";
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
     try {
       const res = await fetch("/api/qa", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ explanationId, question }),
+        body: JSON.stringify({ code, explanation, messages, question }),
       });
 
-      if (!res.ok || !res.body) {
-        throw new Error("Q&A request failed");
-      }
+      if (!res.ok || !res.body) throw new Error("Q&A request failed");
+
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
 
@@ -65,6 +65,9 @@ export function QAChat({ explanationId }: Props) {
           }
         }
       }
+
+      // Save assistant reply into local history for next turn
+      setMessages([...updatedMessages, { role: "assistant", content: assistantContent }]);
     } catch {
       setMessages((prev) => [
         ...prev.slice(0, -1),
