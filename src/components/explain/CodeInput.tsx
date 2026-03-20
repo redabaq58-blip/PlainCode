@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Upload, X, FileCode } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { CODE_FILE_EXTENSIONS } from "@/constants/supported-languages";
 
