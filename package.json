@@ -64,7 +64,7 @@
   "devDependencies": {
     "@types/node": "^25.5.0",
     "@types/pg": "^8.18.0",
-    "eslint": "^9.39.4",
+    "eslint": "^8.57.1",
     "eslint-config-next": "^14.2.0",
     "typescript": "^5.9.3"
   }
