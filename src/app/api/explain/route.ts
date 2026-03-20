@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth/config";
 import { encodePipelineStream } from "@/lib/ai/pipeline";
-import { saveExplanation, incrementMonthlyUsage, getMonthlyUsage } from "@/lib/db/queries/explanations";
+import { saveExplanationWithUsage, getMonthlyUsage } from "@/lib/db/queries/explanations";
 import { encrypt } from "@/lib/encryption/at-rest";
 import type { AudienceLevel, ExplainMode, ExplanationResult } from "@/types/explanation";
 
@@ -26,7 +26,6 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   const userId = session?.user?.id;
 
-  // Rate limiting for authenticated users (generous, app is free)
   if (userId) {
     const usage = await getMonthlyUsage(userId);
     if (usage >= FREE_MONTHLY_LIMIT) {
@@ -34,74 +33,90 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const stream = encodePipelineStream({
+  const pipelineStream = encodePipelineStream({
     code,
     audienceLevel: audienceLevel as AudienceLevel,
     outputLanguage,
     privacyMode,
   });
 
-  // We need to intercept the stream to save to DB after completion
-  const { readable, writable } = new TransformStream();
-  const writer = writable.getWriter();
-  const reader = stream.getReader();
+  const encoder = new TextEncoder();
   const decoder = new TextDecoder();
 
-  let fullResult: ExplanationResult | null = null;
+  const outputStream = new ReadableStream({
+    async start(controller) {
+      const reader = pipelineStream.getReader();
+      let fullResult: ExplanationResult | null = null;
+      let savedId: string | undefined;
 
-  (async () => {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-
-      const chunk = decoder.decode(value, { stream: true });
-      await writer.write(value);
-
-      // Parse SSE events to capture the final result
-      const lines = chunk.split("\n");
-      for (const line of lines) {
-        if (line.startsWith("data: ")) {
-          try {
-            const event = JSON.parse(line.slice(6));
-            if (event.type === "done" && event.result) {
-              fullResult = event.result as ExplanationResult;
-            }
-          } catch {}
-        }
-      }
-    }
-
-    // Save to DB after stream completes
-    if (fullResult && userId && !privacyMode) {
       try {
-        const encryptedCode = await encrypt(code);
-        await saveExplanation({
-          userId,
-          audienceLevel: audienceLevel as AudienceLevel,
-          mode: "STANDARD" as ExplainMode,
-          privacyMode,
-          outputLanguage,
-          codeSnippetEnc: encryptedCode.enc,
-          codeSnippetIv: encryptedCode.iv,
-          summaryText: fullResult.summaryText,
-          breakdownText: fullResult.breakdownText,
-          analogyText: fullResult.analogyText,
-          dataMapText: fullResult.dataMapText,
-          confidenceScore: fullResult.confidenceScore,
-          mermaidDiagram: fullResult.mermaidDiagram,
-          layer1Confidence: fullResult.layer1Confidence,
-          layer3Passed: fullResult.layer3Passed,
-        });
-        await incrementMonthlyUsage(userId);
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value, { stream: true });
+
+          // Parse SSE events to capture the final result
+          for (const line of chunk.split("\n")) {
+            if (line.startsWith("data: ")) {
+              try {
+                const event = JSON.parse(line.slice(6));
+                if (event.type === "done" && event.result) {
+                  fullResult = event.result as ExplanationResult;
+                }
+              } catch {}
+            }
+          }
+
+          controller.enqueue(value);
+        }
+
+        // Save to DB after stream completes (transactionally)
+        if (fullResult && userId && !privacyMode) {
+          try {
+            const encryptedCode = await encrypt(code);
+            const saved = await saveExplanationWithUsage({
+              userId,
+              audienceLevel: audienceLevel as AudienceLevel,
+              mode: "STANDARD" as ExplainMode,
+              privacyMode,
+              outputLanguage,
+              codeSnippetEnc: encryptedCode.enc,
+              codeSnippetIv: encryptedCode.iv,
+              summaryText: fullResult.summaryText,
+              breakdownText: fullResult.breakdownText,
+              analogyText: fullResult.analogyText,
+              dataMapText: fullResult.dataMapText,
+              confidenceScore: fullResult.confidenceScore,
+              mermaidDiagram: fullResult.mermaidDiagram,
+              layer1Confidence: fullResult.layer1Confidence,
+              layer3Passed: fullResult.layer3Passed,
+            });
+            savedId = saved.id;
+            // Emit the saved ID so client can use it for share/QA
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: "savedId", savedId })}\n\n`)
+            );
+          } catch (err) {
+            console.error("Failed to save explanation:", err);
+          }
+        }
+
+        controller.close();
       } catch (err) {
-        console.error("Failed to save explanation:", err);
+        const msg = err instanceof Error ? err.message : "Stream error";
+        try {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: "error", error: msg })}\n\n`)
+          );
+          controller.close();
+        } catch {}
+        reader.cancel().catch(() => {});
       }
-    }
+    },
+  });
 
-    writer.close();
-  })();
-
-  return new Response(readable, {
+  return new Response(outputStream, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",

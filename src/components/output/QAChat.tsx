@@ -40,7 +40,10 @@ export function QAChat({ explanationId }: Props) {
         body: JSON.stringify({ explanationId, question }),
       });
 
-      const reader = res.body!.getReader();
+      if (!res.ok || !res.body) {
+        throw new Error("Q&A request failed");
+      }
+      const reader = res.body.getReader();
       const decoder = new TextDecoder();
 
       while (true) {
