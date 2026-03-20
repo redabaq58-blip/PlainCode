@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AudienceLevel {
+  ELI5
+  NON_TECHNICAL
+  BUSINESS_CONTEXT
+  TECHNICAL_NON_DEV
+  DEVELOPER_PEER
+}
+
+enum ExplainMode {
+  STANDARD
+  DIFF
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model User {
+  id             String        @id @default(cuid())
+  name           String?
+  email          String        @unique
+  emailVerified  DateTime?
+  image          String?
+  passwordHash   String?
+  onboardingDone Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  accounts       Account[]
+  sessions       Session[]
+  explanations   Explanation[]
+  sharedLinks    SharedLink[]
+  monthlyUsages  MonthlyUsage[]
+}
+
+model Explanation {
+  id             String        @id @default(cuid())
+  userId         String?
+  audienceLevel  AudienceLevel @default(DEVELOPER_PEER)
+  mode           ExplainMode   @default(STANDARD)
+  privacyMode    Boolean       @default(false)
+  outputLanguage String        @default("English")
+
+  // AES-256-GCM encrypted code (null when privacyMode=true)
+  codeSnippetEnc String?  @db.Text
+  codeSnippetIv  String?
+  // Diff mode (encrypted)
+  codeBeforeEnc  String?  @db.Text
+  codeBeforeIv   String?
+  codeAfterEnc   String?  @db.Text
+  codeAfterIv    String?
+
+  // AI output (plain text)
+  summaryText     String  @db.Text
+  breakdownText   String  @db.Text
+  analogyText     String  @db.Text
+  dataMapText     String  @db.Text
+  confidenceScore Int
+  mermaidDiagram  String? @db.Text
+
+  // Layer debug (never exposed to users)
+  layer1Confidence Int?
+  layer3Passed     Boolean?
+
+  // History display
+  titlePreview   String
+  summaryPreview String
+
+  createdAt DateTime @default(now())
+
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sharedLink SharedLink?
+  qaMessages QAMessage[]
+}
+
+model SharedLink {
+  id            String      @id @default(cuid())
+  token         String      @unique
+  explanationId String      @unique
+  userId        String?
+  showBadge     Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  explanation   Explanation @relation(fields: [explanationId], references: [id], onDelete: Cascade)
+  user          User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model QAMessage {
+  id            String      @id @default(cuid())
+  explanationId String
+  role          String      // "user" | "assistant"
+  content       String      @db.Text
+  createdAt     DateTime    @default(now())
+  explanation   Explanation @relation(fields: [explanationId], references: [id], onDelete: Cascade)
+}
+
+model MonthlyUsage {
+  id        String @id @default(cuid())
+  userId    String
+  yearMonth String // "2026-03"
+  count     Int    @default(0)
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, yearMonth])
+}
