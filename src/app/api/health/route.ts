@@ -6,7 +6,7 @@ import { NextResponse } from "next/server";
  * Returns 503 if required environment variables are missing.
  */
 export async function GET() {
-  const required = ["ANTHROPIC_API_KEY", "NEXTAUTH_SECRET", "DATABASE_URL"];
+  const required = ["ANTHROPIC_API_KEY", "NEXTAUTH_SECRET", "DATABASE_URL", "ENCRYPTION_KEY"];
   const missing = required.filter((k) => !process.env[k]);
 
   if (missing.length > 0) {
