@@ -7,6 +7,13 @@ export interface Layer1Result {
   confidence: number;
 }
 
+const FALLBACK: Layer1Result = {
+  inferredPurpose: "unknown purpose",
+  primaryLanguage: "unknown",
+  complexitySignals: [],
+  confidence: 50,
+};
+
 export async function runLayer1(code: string, privacyMode: boolean): Promise<Layer1Result> {
   const client = getAnthropicClient(privacyMode);
 
@@ -34,14 +41,13 @@ Return this exact shape:
   });
 
   try {
-    const text = response.content[0].type === "text" ? response.content[0].text : "{}";
-    return JSON.parse(text) as Layer1Result;
+    const block = response.content[0];
+    if (!block || block.type !== "text") return FALLBACK;
+    const parsed = JSON.parse(block.text) as Layer1Result;
+    // Validate shape
+    if (typeof parsed.confidence !== "number") return FALLBACK;
+    return parsed;
   } catch {
-    return {
-      inferredPurpose: "unknown purpose",
-      primaryLanguage: "unknown",
-      complexitySignals: [],
-      confidence: 50,
-    };
+    return FALLBACK;
   }
 }

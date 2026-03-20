@@ -1,17 +1,25 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-let _client: Anthropic | null = null;
+function createClient(extraHeaders?: Record<string, string>): Anthropic {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    throw new Error("ANTHROPIC_API_KEY environment variable is required");
+  }
+  return new Anthropic({
+    apiKey,
+    ...(extraHeaders ? { defaultHeaders: extraHeaders } : {}),
+  });
+}
+
+let _defaultClient: Anthropic | null = null;
 
 export function getAnthropicClient(privacyMode = false): Anthropic {
-  if (!_client) {
-    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  }
   if (privacyMode) {
-    // Return a client configured with no-training header for privacy mode
-    return new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-      defaultHeaders: { "anthropic-beta": "no-training-2025-08-01" },
-    });
+    // Privacy mode: fresh client with no-training header, not cached
+    return createClient({ "anthropic-beta": "no-training-2025-08-01" });
   }
-  return _client;
+  if (!_defaultClient) {
+    _defaultClient = createClient();
+  }
+  return _defaultClient;
 }

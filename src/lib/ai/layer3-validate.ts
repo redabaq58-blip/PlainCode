@@ -6,6 +6,9 @@ export interface Layer3Result {
   confidenceAdjustment: number;
 }
 
+// Conservative fallback: if we can't validate, assume moderate quality (not perfect)
+const FALLBACK: Layer3Result = { accurate: true, errors: [], confidenceAdjustment: -5 };
+
 export async function runLayer3(
   code: string,
   explanation: string,
@@ -42,10 +45,14 @@ If the explanation is accurate, return an empty errors array and a positive conf
   });
 
   try {
-    const text = response.content[0].type === "text" ? response.content[0].text : "{}";
-    return JSON.parse(text) as Layer3Result;
+    const block = response.content[0];
+    if (!block || block.type !== "text") return FALLBACK;
+    const parsed = JSON.parse(block.text) as Layer3Result;
+    // Validate required fields
+    if (typeof parsed.accurate !== "boolean" || !Array.isArray(parsed.errors)) return FALLBACK;
+    return parsed;
   } catch {
-    return { accurate: true, errors: [], confidenceAdjustment: 0 };
+    return FALLBACK;
   }
 }
 
@@ -80,5 +87,6 @@ Return the corrected explanation using the same <!-- SECTION:X --> delimiters.`,
     ],
   });
 
-  return response.content[0].type === "text" ? response.content[0].text : originalExplanation;
+  const block = response.content[0];
+  return block?.type === "text" ? block.text : originalExplanation;
 }

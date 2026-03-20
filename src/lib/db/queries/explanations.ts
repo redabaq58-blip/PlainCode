@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db/client";
 import type { AudienceLevel, ExplainMode } from "@/types/explanation";
 import type { Prisma } from "@prisma/client";
 
-export async function saveExplanation(data: {
+interface SaveExplanationData {
   userId?: string;
   audienceLevel: AudienceLevel;
   mode: ExplainMode;
@@ -22,8 +22,10 @@ export async function saveExplanation(data: {
   mermaidDiagram?: string;
   layer1Confidence?: number;
   layer3Passed?: boolean;
-}) {
-  const titlePreview = data.summaryText.split(".")[0].slice(0, 80);
+}
+
+export async function saveExplanation(data: SaveExplanationData) {
+  const titlePreview = data.summaryText.split(".")[0].slice(0, 80) || "Untitled";
   const summaryPreview = data.summaryText.slice(0, 150);
 
   return prisma.explanation.create({
@@ -37,12 +39,39 @@ export async function saveExplanation(data: {
   });
 }
 
+/** Atomically saves explanation and increments monthly usage in a single transaction */
+export async function saveExplanationWithUsage(data: SaveExplanationData & { userId: string }) {
+  const yearMonth = new Date().toISOString().slice(0, 7);
+  const titlePreview = data.summaryText.split(".")[0].slice(0, 80) || "Untitled";
+  const summaryPreview = data.summaryText.slice(0, 150);
+
+  const [explanation] = await prisma.$transaction([
+    prisma.explanation.create({
+      data: {
+        ...data,
+        audienceLevel: data.audienceLevel as Prisma.ExplanationCreateInput["audienceLevel"],
+        mode: data.mode as Prisma.ExplanationCreateInput["mode"],
+        titlePreview,
+        summaryPreview,
+      },
+    }),
+    prisma.monthlyUsage.upsert({
+      where: { userId_yearMonth: { userId: data.userId, yearMonth } },
+      create: { userId: data.userId, yearMonth, count: 1 },
+      update: { count: { increment: 1 } },
+    }),
+  ]);
+
+  return explanation;
+}
+
 export async function getExplanationById(id: string) {
   return prisma.explanation.findUnique({ where: { id } });
 }
 
 export async function getUserHistory(userId: string, page = 1, limit = 20) {
-  const skip = (page - 1) * limit;
+  const safePage = Math.max(1, page);
+  const skip = (safePage - 1) * limit;
   const [items, total] = await Promise.all([
     prisma.explanation.findMany({
       where: { userId },
@@ -66,7 +95,7 @@ export async function getUserHistory(userId: string, page = 1, limit = 20) {
 }
 
 export async function getMonthlyUsage(userId: string): Promise<number> {
-  const yearMonth = new Date().toISOString().slice(0, 7); // "2026-03"
+  const yearMonth = new Date().toISOString().slice(0, 7);
   const row = await prisma.monthlyUsage.findUnique({
     where: { userId_yearMonth: { userId, yearMonth } },
   });

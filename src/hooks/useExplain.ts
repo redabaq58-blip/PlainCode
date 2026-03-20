@@ -71,11 +71,16 @@ export function useExplain() {
 
         if (!res.ok) {
           const err = await res.json().catch(() => ({ error: "Request failed" }));
-          setState((s) => ({ ...s, error: err.error, loading: false, done: true }));
+          setState((s) => ({ ...s, error: err.error ?? "Request failed", loading: false, done: true }));
           return;
         }
 
-        const reader = res.body!.getReader();
+        if (!res.body) {
+          setState((s) => ({ ...s, error: "No response stream", loading: false, done: true }));
+          return;
+        }
+
+        const reader = res.body.getReader();
         const decoder = new TextDecoder();
 
         while (true) {
@@ -90,7 +95,6 @@ export function useExplain() {
               if (event.type === "section") {
                 setState((s) => ({ ...s, currentSection: event.section }));
               } else if (event.type === "delta") {
-                const section = event.section as keyof typeof DEFAULT_SECTIONS | undefined;
                 setState((s) => {
                   const cur = s.currentSection as keyof typeof DEFAULT_SECTIONS;
                   if (!cur) return s;
@@ -101,13 +105,14 @@ export function useExplain() {
                 });
               } else if (event.type === "confidence") {
                 setState((s) => ({ ...s, confidence: event.confidence }));
+              } else if (event.type === "savedId") {
+                setState((s) => ({ ...s, savedId: event.savedId }));
               } else if (event.type === "done") {
                 setState((s) => ({
                   ...s,
                   done: true,
                   loading: false,
                   currentSection: "",
-                  savedId: event.savedId,
                 }));
               } else if (event.type === "error") {
                 setState((s) => ({ ...s, error: event.error, loading: false, done: true }));
@@ -115,6 +120,9 @@ export function useExplain() {
             } catch {}
           }
         }
+
+        // Ensure loading is cleared even if "done" event wasn't received
+        setState((s) => (s.loading ? { ...s, loading: false, done: true } : s));
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
           setState((s) => ({ ...s, error: "Connection error", loading: false, done: true }));

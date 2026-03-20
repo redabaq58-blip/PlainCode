@@ -9,7 +9,8 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const page = parseInt(searchParams.get("page") ?? "1", 10);
+  const rawPage = parseInt(searchParams.get("page") ?? "1", 10);
+  const page = Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1;
 
   const result = await getUserHistory(session.user.id, page);
   return NextResponse.json(result);

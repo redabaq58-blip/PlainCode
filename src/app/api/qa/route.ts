@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db/client";
 import { auth } from "@/lib/auth/config";
 
 const schema = z.object({
-  explanationId: z.string(),
+  explanationId: z.string().cuid(),
   question: z.string().min(1).max(2000),
 });
 
@@ -26,13 +26,22 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Explanation not found" }, { status: 404 });
   }
 
+  // Authorization: explanation must belong to the requesting user (or be public / no owner)
+  if (explanation.userId && explanation.userId !== session?.user?.id) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   // Decrypt code if available
   let code = "";
   if (explanation.codeSnippetEnc && explanation.codeSnippetIv) {
-    code = await decrypt(explanation.codeSnippetEnc, explanation.codeSnippetIv);
+    try {
+      code = await decrypt(explanation.codeSnippetEnc, explanation.codeSnippetIv);
+    } catch {
+      // Can't decrypt — proceed without code context
+    }
   }
 
-  // Load Q&A history
+  // Load Q&A history (last 12 messages to keep context window manageable)
   const existingMessages = await prisma.qAMessage.findMany({
     where: { explanationId },
     orderBy: { createdAt: "asc" },
@@ -44,7 +53,7 @@ export async function POST(req: NextRequest) {
     { role: "user" as const, content: question },
   ];
 
-  // Save user message
+  // Save user message before streaming
   await prisma.qAMessage.create({
     data: { explanationId, role: "user", content: question },
   });
@@ -66,7 +75,6 @@ export async function POST(req: NextRequest) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta })}\n\n`));
         }
 
-        // Save assistant response
         await prisma.qAMessage.create({
           data: { explanationId, role: "assistant", content: assistantResponse },
         });
@@ -74,10 +82,11 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));
         controller.close();
       } catch (err) {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ error: "Q&A failed" })}\n\n`)
-        );
-        controller.close();
+        const msg = err instanceof Error ? err.message : "Q&A failed";
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`));
+          controller.close();
+        } catch {}
       }
     },
   });
