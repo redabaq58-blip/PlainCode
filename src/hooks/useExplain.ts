@@ -15,7 +15,6 @@ interface StreamState {
   done: boolean;
   error?: string;
   loading: boolean;
-  savedId?: string;
 }
 
 const DEFAULT_SECTIONS = { SUMMARY: "", BREAKDOWN: "", ANALOGY: "", DATAMAP: "", MERMAID: "" };
@@ -105,8 +104,6 @@ export function useExplain() {
                 });
               } else if (event.type === "confidence") {
                 setState((s) => ({ ...s, confidence: event.confidence }));
-              } else if (event.type === "savedId") {
-                setState((s) => ({ ...s, savedId: event.savedId }));
               } else if (event.type === "done") {
                 setState((s) => ({
                   ...s,

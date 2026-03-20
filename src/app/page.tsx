@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Code2, Sparkles, BookOpen, GitCompare, MessageSquare, GitBranch, Lock, ChevronRight, CheckCircle2 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
-import { SessionProvider } from "@/components/layout/SessionProvider";
 
 const features = [
   {
@@ -38,8 +37,7 @@ const features = [
 
 export default function LandingPage() {
   return (
-    <SessionProvider>
-      <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
           {/* Navbar */}
           <nav className="border-b border-border bg-background/80 backdrop-blur sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
@@ -137,6 +135,5 @@ export default function LandingPage() {
             </div>
           </footer>
       </div>
-    </SessionProvider>
   );
 }

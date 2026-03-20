@@ -111,7 +111,7 @@ export default function ExplainPage() {
               </div>
             </div>
           ) : (
-            <ExplanationPanel stream={state} savedId={state.savedId} />
+            <ExplanationPanel stream={state} code={code} />
           )}
         </div>
       </div>
