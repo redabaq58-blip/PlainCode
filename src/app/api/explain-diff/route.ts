@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth/config";
 import { encodePipelineStream } from "@/lib/ai/pipeline";
-import { saveExplanationWithUsage } from "@/lib/db/queries/explanations";
+import { saveExplanation } from "@/lib/db/queries/explanations";
 import { encrypt } from "@/lib/encryption/at-rest";
 import type { AudienceLevel, ExplainMode, ExplanationResult } from "@/types/explanation";
 
@@ -21,8 +20,6 @@ export async function POST(req: NextRequest) {
   }
 
   const { codeBefore, codeAfter, audienceLevel, outputLanguage } = parsed.data;
-  const session = await auth();
-  const userId = session?.user?.id;
 
   const pipelineStream = encodePipelineStream({
     code: "",
@@ -62,18 +59,15 @@ export async function POST(req: NextRequest) {
           controller.enqueue(value);
         }
 
-        // Save diff explanation for authenticated users
-        if (fullResult && userId) {
+        if (fullResult) {
           try {
             const [encBefore, encAfter] = await Promise.all([
               encrypt(codeBefore),
               encrypt(codeAfter),
             ]);
-            const saved = await saveExplanationWithUsage({
-              userId,
+            const saved = await saveExplanation({
               audienceLevel: audienceLevel as AudienceLevel,
               mode: "DIFF" as ExplainMode,
-              privacyMode: false,
               outputLanguage,
               codeBeforeEnc: encBefore.enc,
               codeBeforeIv: encBefore.iv,
