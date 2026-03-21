@@ -79,7 +79,7 @@ export function ExplanationPanel({ stream, code = "" }: Props) {
         isStreaming={currentSection === "DATAMAP"}
       />
 
-      {sections.MERMAID && sections.MERMAID !== "none" && (
+      {done && sections.MERMAID && sections.MERMAID !== "none" && (
         <FlowDiagram diagram={sections.MERMAID} />
       )}
 

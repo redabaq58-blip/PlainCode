@@ -38,6 +38,28 @@ function sanitizeMermaid(raw: string): string {
   return cleaned;
 }
 
+/**
+ * Removes any mermaid error elements that get injected into document.body.
+ * Mermaid v11 renders syntax errors as visible SVG elements with bomb icons
+ * directly into the DOM, bypassing try/catch.
+ */
+function cleanupMermaidErrors() {
+  document.querySelectorAll('[id^="d"]').forEach((el) => {
+    if (el.textContent?.includes("Syntax error in text")) {
+      el.remove();
+    }
+  });
+  // Mermaid also adds elements with id "d" + number pattern
+  document.querySelectorAll("svg").forEach((el) => {
+    if (
+      el.parentElement === document.body &&
+      el.textContent?.includes("Syntax error")
+    ) {
+      el.remove();
+    }
+  });
+}
+
 export function FlowDiagram({ diagram }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState(false);
@@ -49,21 +71,45 @@ export function FlowDiagram({ diagram }: Props) {
     let cancelled = false;
 
     (async () => {
+      // Set up a MutationObserver to immediately remove any error elements
+      // mermaid injects into the DOM body (bomb icon SVGs)
+      const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          for (const node of mutation.addedNodes) {
+            if (node instanceof HTMLElement || node instanceof SVGElement) {
+              if (node.textContent?.includes("Syntax error in text")) {
+                node.remove();
+              }
+            }
+          }
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: false });
+
       try {
         const mermaid = (await import("mermaid")).default;
         mermaid.initialize({
           startOnLoad: false,
           theme: "neutral",
           securityLevel: "loose",
-          suppressErrorRendering: true,
         });
 
         const cleaned = sanitizeMermaid(diagram);
 
-        // Validate syntax before rendering to avoid DOM-injected error SVGs
-        const valid = await mermaid.parse(cleaned, { suppressErrors: true });
+        // Validate syntax before rendering
+        let valid = false;
+        try {
+          valid = !!(await mermaid.parse(cleaned));
+        } catch {
+          // parse() throws on invalid syntax in some mermaid versions
+        }
+
+        // Clean up any error elements parse() may have injected
+        cleanupMermaidErrors();
+
         if (!valid) {
           if (!cancelled) setError(true);
+          observer.disconnect();
           return;
         }
 
@@ -72,15 +118,22 @@ export function FlowDiagram({ diagram }: Props) {
 
         // Clean up detached render element mermaid may leave behind
         document.getElementById(id)?.remove();
+        cleanupMermaidErrors();
 
         if (!cancelled) setSvg(renderedSvg);
       } catch {
+        cleanupMermaidErrors();
         if (!cancelled) setError(true);
+      } finally {
+        observer.disconnect();
+        // Final cleanup pass
+        cleanupMermaidErrors();
       }
     })();
 
     return () => {
       cancelled = true;
+      cleanupMermaidErrors();
     };
   }, [diagram]);
 
