@@ -28,7 +28,21 @@ CRITICAL FORMAT REQUIREMENT: Your response MUST use these exact section delimite
 [What data/information goes in, what comes out, and what transforms]
 
 <!-- SECTION:MERMAID -->
-[A Mermaid.js flowchart (flowchart TD syntax) showing the logic flow. Output ONLY the raw Mermaid syntax — no code fences, no \`\`\`mermaid blocks. If a diagram is not useful, write: none]
+[A Mermaid.js flowchart showing the logic flow. If a diagram is not useful, write: none
+
+STRICT MERMAID RULES:
+- Start with: flowchart TD
+- Use simple alphanumeric node IDs: A, B, C1, step1, etc.
+- Put labels in square brackets with quotes: A["Label here"]
+- Use ONLY plain ASCII in labels. NO special characters like arrows or unicode
+- Connect nodes with -->
+- Example:
+flowchart TD
+  A["Start"] --> B["Process input"]
+  B --> C{"Valid?"}
+  C -->|Yes| D["Save result"]
+  C -->|No| E["Show error"]
+]
 
 This format is mandatory. Output section delimiters exactly as shown.`;
 }
