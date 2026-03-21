@@ -96,22 +96,19 @@ export function FlowDiagram({ diagram }: Props) {
 
         const cleaned = sanitizeMermaid(diagram);
 
-        // Validate syntax before rendering
-        let valid = false;
+        // Validate syntax before rendering — parse() returns void on success
+        // and throws on invalid syntax in mermaid v11
         try {
-          valid = !!(await mermaid.parse(cleaned));
+          await mermaid.parse(cleaned);
         } catch {
-          // parse() throws on invalid syntax in some mermaid versions
-        }
-
-        // Clean up any error elements parse() may have injected
-        cleanupMermaidErrors();
-
-        if (!valid) {
+          cleanupMermaidErrors();
           if (!cancelled) setError(true);
           observer.disconnect();
           return;
         }
+
+        // Clean up any error elements parse() may have injected
+        cleanupMermaidErrors();
 
         const id = `diagram-${Math.random().toString(36).slice(2)}`;
         const { svg: renderedSvg } = await mermaid.render(id, cleaned);
