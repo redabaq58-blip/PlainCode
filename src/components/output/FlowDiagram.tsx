@@ -13,6 +13,31 @@ function stripCodeFences(raw: string): string {
     .trim();
 }
 
+function sanitizeMermaid(raw: string): string {
+  let cleaned = stripCodeFences(raw);
+
+  // Ensure it starts with a valid diagram type
+  if (!/^(flowchart|graph)\s/i.test(cleaned)) {
+    cleaned = `flowchart TD\n${cleaned}`;
+  }
+
+  // Quote node labels that contain special characters Mermaid can't parse.
+  // Matches node definitions like:  A[label] A(label) A{label} A((label))
+  // and wraps the inner label in quotes if it has problematic chars.
+  cleaned = cleaned.replace(
+    /(\w+)(\[|\(+|\{+)(.*?)(\]|\)+|\}+)/g,
+    (_match, id, open, label, close) => {
+      if (/[→←↔<>&"()[\]{}|#]/.test(label) && !label.startsWith('"')) {
+        const escaped = label.replace(/"/g, "'");
+        return `${id}${open}"${escaped}"${close}`;
+      }
+      return `${id}${open}${label}${close}`;
+    }
+  );
+
+  return cleaned;
+}
+
 export function FlowDiagram({ diagram }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState(false);
@@ -21,18 +46,42 @@ export function FlowDiagram({ diagram }: Props) {
   useEffect(() => {
     if (!diagram || diagram === "none") return;
 
+    let cancelled = false;
+
     (async () => {
       try {
         const mermaid = (await import("mermaid")).default;
-        mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "strict" });
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: "neutral",
+          securityLevel: "loose",
+          suppressErrorRendering: true,
+        });
+
+        const cleaned = sanitizeMermaid(diagram);
+
+        // Validate syntax before rendering to avoid DOM-injected error SVGs
+        const valid = await mermaid.parse(cleaned, { suppressErrors: true });
+        if (!valid) {
+          if (!cancelled) setError(true);
+          return;
+        }
+
         const id = `diagram-${Math.random().toString(36).slice(2)}`;
-        const cleaned = stripCodeFences(diagram);
-        const { svg } = await mermaid.render(id, cleaned);
-        setSvg(svg);
+        const { svg: renderedSvg } = await mermaid.render(id, cleaned);
+
+        // Clean up detached render element mermaid may leave behind
+        document.getElementById(id)?.remove();
+
+        if (!cancelled) setSvg(renderedSvg);
       } catch {
-        setError(true);
+        if (!cancelled) setError(true);
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [diagram]);
 
   const downloadSvg = () => {
@@ -69,7 +118,6 @@ export function FlowDiagram({ diagram }: Props) {
         <div
           ref={containerRef}
           className="overflow-auto"
-          // Safe: mermaid renders SVG server-side with strict security level
           dangerouslySetInnerHTML={{ __html: svg }}
         />
       ) : (
