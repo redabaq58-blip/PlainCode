@@ -1,8 +1,13 @@
 import { NextResponse } from "next/server";
 
 export async function GET() {
+  const warnings: string[] = [];
   if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ status: "error", missing: ["ANTHROPIC_API_KEY"] }, { status: 503 });
+    warnings.push("ANTHROPIC_API_KEY");
   }
-  return NextResponse.json({ status: "ok", ts: new Date().toISOString() });
+  return NextResponse.json({
+    status: "ok",
+    ts: new Date().toISOString(),
+    ...(warnings.length > 0 && { warnings }),
+  });
 }
