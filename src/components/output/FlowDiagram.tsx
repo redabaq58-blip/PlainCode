@@ -6,6 +6,13 @@ interface Props {
   diagram: string;
 }
 
+function stripCodeFences(raw: string): string {
+  return raw
+    .replace(/^```(?:mermaid)?\s*\n?/i, "")
+    .replace(/\n?```\s*$/i, "")
+    .trim();
+}
+
 export function FlowDiagram({ diagram }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState(false);
@@ -19,7 +26,8 @@ export function FlowDiagram({ diagram }: Props) {
         const mermaid = (await import("mermaid")).default;
         mermaid.initialize({ startOnLoad: false, theme: "neutral", securityLevel: "strict" });
         const id = `diagram-${Math.random().toString(36).slice(2)}`;
-        const { svg } = await mermaid.render(id, diagram);
+        const cleaned = stripCodeFences(diagram);
+        const { svg } = await mermaid.render(id, cleaned);
         setSvg(svg);
       } catch {
         setError(true);

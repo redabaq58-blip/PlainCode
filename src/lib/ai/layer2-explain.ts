@@ -28,7 +28,7 @@ CRITICAL FORMAT REQUIREMENT: Your response MUST use these exact section delimite
 [What data/information goes in, what comes out, and what transforms]
 
 <!-- SECTION:MERMAID -->
-[A Mermaid.js flowchart (flowchart TD syntax) showing the logic flow. If a diagram is not useful, write: none]
+[A Mermaid.js flowchart (flowchart TD syntax) showing the logic flow. Output ONLY the raw Mermaid syntax — no code fences, no \`\`\`mermaid blocks. If a diagram is not useful, write: none]
 
 This format is mandatory. Output section delimiters exactly as shown.`;
 }
