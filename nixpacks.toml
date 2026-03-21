@@ -3,3 +3,6 @@ nixPkgs = ["nodejs_22", "openssl"]
 
 [variables]
 NODE_VERSION = "22"
+
+[start]
+cmd = "node .next/standalone/server.js"
