@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAnthropicClient } from "@/lib/ai/client";
 
+function parseClaudeJSON<T>(text: string): T {
+  const cleaned = text
+    .replace(/^```(?:json)?\s*/m, "")
+    .replace(/\s*```\s*$/m, "")
+    .trim();
+  return JSON.parse(cleaned) as T;
+}
+
 const answeredSchema = z.object({
   id: z.number(),
   category: z.string(),
@@ -62,11 +70,11 @@ Return ONLY valid JSON (no markdown):
 
     const block = res.content[0];
     if (!block || block.type !== "text") throw new Error("No response");
-    const result = JSON.parse(block.text);
+    const result = parseClaudeJSON<{ weakSpots: string[] }>(block.text);
 
     return NextResponse.json({
       defenseScore,
-      weakSpots: result.weakSpots as string[],
+      weakSpots: result.weakSpots,
     });
   } catch (err) {
     return NextResponse.json(

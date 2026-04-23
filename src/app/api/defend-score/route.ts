@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAnthropicClient } from "@/lib/ai/client";
 
+function parseClaudeJSON<T>(text: string): T {
+  const cleaned = text
+    .replace(/^```(?:json)?\s*/m, "")
+    .replace(/\s*```\s*$/m, "")
+    .trim();
+  return JSON.parse(cleaned) as T;
+}
+
 const schema = z.object({
   repoCode: z.string().min(10).max(35_000),
   question: z.string().min(1),
@@ -54,7 +62,7 @@ Return ONLY valid JSON (no markdown):
 
     const block = res.content[0];
     if (!block || block.type !== "text") throw new Error("No response");
-    const result = JSON.parse(block.text);
+    const result = parseClaudeJSON<{ score: number; feedback: string }>(block.text);
 
     return NextResponse.json({
       score: Math.max(0, Math.min(100, Math.round(result.score))),
