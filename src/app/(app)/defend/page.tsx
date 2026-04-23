@@ -382,7 +382,7 @@ export default function DefendPage() {
         <div className="rounded-lg border border-border bg-card p-8 space-y-6">
           <div className="space-y-4">
             {[
-              { label: "Fetching repository files", done: phase === "generating" || phase === "quiz" },
+              { label: "Fetching repository files", done: phase === "generating" },
               { label: "Analyzing codebase architecture", done: false, active: phase === "generating" },
               { label: "Generating 5 adversarial questions", done: false, active: false },
             ].map((step, i) => (
