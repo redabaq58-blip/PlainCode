@@ -1,12 +1,47 @@
 # </> PlainCode
 
-**Understand any code in seconds.** PlainCode takes any code snippet and produces a clear explanation tailored to your technical level — powered by a 3-layer AI accuracy pipeline.
+**Understand any code in seconds — and prove you understand your own.** PlainCode explains any code snippet in plain English, and challenges you to defend your own codebase under adversarial questioning. Powered by a 3-layer AI accuracy pipeline.
 
 Free. No sign-up required.
 
 ---
 
 ## What It Does
+
+PlainCode has three modes:
+
+| Mode | What it does |
+|------|-------------|
+| **Explain** | Paste code, pick your audience, get a structured plain-English explanation |
+| **Diff** | Compare two versions of code and understand what changed and why |
+| **Defend** | Point at a GitHub repo — get grilled with 5 adversarial questions, scored 0–100 per answer |
+
+---
+
+## Features
+
+### Defend Mode *(new)*
+
+Point PlainCode at any public GitHub repository and defend your design decisions under pressure.
+
+**How it works:**
+1. Paste a public GitHub repo URL (e.g. `https://github.com/you/your-project`)
+2. PlainCode fetches the codebase (up to 30,000 characters of source code)
+3. A 3-layer AI pipeline generates **5 adversarial questions** — one per category:
+   - **Architecture** — Why did you structure it this way?
+   - **Edge Cases** — What happens when X breaks?
+   - **Security** — What attack vectors did you leave open?
+   - **Scalability** — What falls apart at 10× load?
+   - **Alternatives** — Why this approach over the obvious alternative?
+4. Answer each question in your own words
+5. Claude scores every answer **0–100** with one line of sharp feedback
+6. After all 5, get your **Defense Score** (average) and a **3-bullet summary of your weakest spots**
+
+Questions are grounded in your actual code — file names, function names, patterns — not generic prompts. No auth, no storage. Fully stateless.
+
+---
+
+### Explain Mode
 
 Paste code (or upload a file), pick your audience level, and get a structured explanation with:
 
@@ -17,11 +52,7 @@ Paste code (or upload a file), pick your audience level, and get a structured ex
 - **Flow Diagram** — Auto-generated Mermaid.js flowchart of the logic
 - **Confidence Score** — A 0–100 accuracy rating from a 3-layer AI check
 
-## Features
-
-### 5 Audience Levels
-
-Tailor explanations to exactly who's reading:
+#### 5 Audience Levels
 
 | Level | Best For |
 |-------|----------|
@@ -33,6 +64,8 @@ Tailor explanations to exactly who's reading:
 
 Changing the audience level automatically re-explains the same code.
 
+---
+
 ### Diff Mode
 
 Compare two versions of code side-by-side and get an explanation of **what changed and why it matters**. Perfect for reviewing pull requests.
@@ -40,6 +73,8 @@ Compare two versions of code side-by-side and get an explanation of **what chang
 - Paste "Before" and "After" code
 - Get the same structured explanation, focused on the differences
 - Supports up to 25,000 characters per side
+
+---
 
 ### Follow-Up Q&A
 
@@ -49,13 +84,19 @@ After an explanation is generated, ask follow-up questions in a built-in chat:
 - Conversation history maintained (last 6 exchanges)
 - Streamed responses in real-time
 
+---
+
 ### 15 Output Languages
 
 Get explanations in: English, Spanish, French, German, Portuguese, Japanese, Chinese (Simplified), Korean, Italian, Russian, Arabic, Hindi, Dutch, Turkish, or Polish.
 
+---
+
 ### Privacy Mode
 
 Toggle privacy mode on the explain page to ensure your code is never stored or used for model training. Adds Anthropic's `no-training` header to all API calls.
+
+---
 
 ### File Upload
 
@@ -64,39 +105,43 @@ Upload code files directly instead of pasting:
 - Drag & drop onto the editor, or click to pick a file
 - Supports 16+ extensions: `.js`, `.ts`, `.py`, `.java`, `.rs`, `.go`, `.sql`, `.sh`, `.rb`, `.php`, `.cs`, `.cpp`, `.c`, `.json`, `.md`, `.txt`, and more
 
+---
+
 ### Dark Mode
 
 Full light and dark theme support with system detection. Toggle via the moon/sun icon in the navbar.
 
+---
+
 ### Keyboard Shortcuts
 
-- **Cmd+Enter** (Mac) / **Ctrl+Enter** (Windows/Linux) — Trigger explanation
+- **Cmd+Enter** (Mac) / **Ctrl+Enter** (Windows/Linux) — Trigger explanation or diff
 - **Enter** in Q&A — Send message
 
 ---
 
 ## How the 3-Layer AI Pipeline Works
 
-PlainCode doesn't just ask an AI to explain code — it runs a 3-layer pipeline to ensure accuracy:
+Every feature in PlainCode runs through a 3-layer pipeline to ensure accuracy:
 
 ```
 ┌─────────────────────────────────────────────┐
 │  Layer 1: Intent Analysis (Claude Haiku)    │
 │  → Detects language, purpose, complexity    │
-│  → Grounds the explanation                  │
+│  → Grounds the explanation / questions      │
 ├─────────────────────────────────────────────┤
-│  Layer 2: Explanation (Claude Sonnet)       │
-│  → Generates the full structured response   │
+│  Layer 2: Generation (Claude Sonnet)        │
+│  → Explains code / generates questions      │
 │  → Streams in real-time via SSE             │
 ├─────────────────────────────────────────────┤
 │  Layer 3: Adversarial Validation (Haiku)    │
-│  → Checks explanation against code          │
+│  → Checks output against the source         │
 │  → Identifies and auto-corrects errors      │
 │  → Adjusts confidence score                 │
 └─────────────────────────────────────────────┘
 ```
 
-If Layer 3 finds errors, the explanation is automatically revised and re-validated before the final confidence score is calculated.
+In Explain mode, Layer 3 validates the explanation and triggers an automatic revision loop if errors are found. In Defend mode, Layer 3 validates that the generated questions are specific to your codebase — not generic.
 
 ---
 
@@ -119,6 +164,7 @@ If Layer 3 finds errors, the explanation is automatically revised and re-validat
 
 - Node.js >= 22.12.0
 - An Anthropic API key from [console.anthropic.com](https://console.anthropic.com/)
+- *(Optional)* A GitHub personal access token — raises rate limits for Defend Mode
 
 ### Setup
 
@@ -130,10 +176,22 @@ cd PlainCode
 # Install dependencies
 npm install
 
-# Set your API key
+# Configure environment
 cp .env.example .env.local
-# Edit .env.local and add: ANTHROPIC_API_KEY=sk-ant-...
+```
 
+Edit `.env.local`:
+
+```env
+# Required — get yours at console.anthropic.com
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Optional — increases GitHub API rate limit for Defend Mode
+# A read-only personal access token is sufficient
+GITHUB_TOKEN=ghp_...
+```
+
+```bash
 # Start dev server
 npm run dev
 ```
@@ -158,9 +216,13 @@ The app uses Next.js standalone output mode for containerized deployments (Railw
 | `POST` | `/api/explain` | Explain a code snippet (SSE stream) |
 | `POST` | `/api/explain-diff` | Explain changes between two code versions (SSE stream) |
 | `POST` | `/api/qa` | Ask a follow-up question (SSE stream) |
-| `GET` | `/api/health` | Health check with env warnings |
+| `POST` | `/api/fetch-repo` | Fetch source files from a public GitHub repo |
+| `POST` | `/api/defend` | Generate 5 adversarial questions for a codebase |
+| `POST` | `/api/defend-score` | Score a single answer 0–100 with feedback |
+| `POST` | `/api/defend-summary` | Generate Defense Score + weak-spot summary |
+| `GET`  | `/api/health` | Health check |
 
-All streaming endpoints return Server-Sent Events with JSON payloads.
+All streaming endpoints return Server-Sent Events with JSON payloads. Defend Mode endpoints return standard JSON.
 
 ---
 
