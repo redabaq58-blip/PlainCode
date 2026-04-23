@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Code2, Sparkles, BookOpen, GitCompare, MessageSquare, GitBranch, Lock, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Code2, Sparkles, BookOpen, GitCompare, MessageSquare, GitBranch, Lock, Shield, ChevronRight, CheckCircle2 } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 const features = [
@@ -27,6 +27,11 @@ const features = [
     icon: <GitBranch className="h-5 w-5 text-red-500" />,
     title: "Flow Diagrams",
     description: "Automatic Mermaid.js flowcharts generated from the explanation.",
+  },
+  {
+    icon: <Shield className="h-5 w-5 text-orange-500" />,
+    title: "Defend Mode",
+    description: "Point at a GitHub repo and get grilled with 5 adversarial questions — scored 0–100 per answer.",
   },
   {
     icon: <Lock className="h-5 w-5 text-slate-500" />,
@@ -89,6 +94,13 @@ export default function LandingPage() {
               >
                 <GitCompare className="h-4 w-4" />
                 Explain a diff
+              </Link>
+              <Link
+                href="/defend"
+                className="flex items-center gap-2 border border-border px-6 py-3 rounded-lg font-semibold hover:bg-accent transition-colors text-sm"
+              >
+                <Shield className="h-4 w-4" />
+                Defend a repo
               </Link>
             </div>
           </section>
