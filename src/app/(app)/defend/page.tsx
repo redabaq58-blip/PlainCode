@@ -384,7 +384,7 @@ export default function DefendPage() {
             {[
               { label: "Fetching repository files", done: phase === "generating" },
               { label: "Analyzing codebase architecture", done: false, active: phase === "generating" },
-              { label: "Generating 5 adversarial questions", done: false, active: false },
+              { label: "Generating 5 adversarial questions", done: false, active: phase === "generating" },
             ].map((step, i) => (
               <div key={i} className="flex items-center gap-3">
                 {step.done ? (
@@ -412,14 +412,6 @@ export default function DefendPage() {
                 </span>
               </div>
             ))}
-            {phase === "generating" && (
-              <div className="flex items-center gap-3">
-                <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
-                <span className="text-sm text-foreground font-medium">
-                  Generating 5 adversarial questions
-                </span>
-              </div>
-            )}
           </div>
           <p className="text-xs text-muted-foreground text-center">
             This usually takes 15–30 seconds
