@@ -4,12 +4,14 @@ import {
   Loader2,
   Shield,
   ChevronRight,
-  Github,
   CheckCircle2,
   AlertCircle,
   RotateCcw,
+  Flame,
 } from "lucide-react";
 import type { DefendQuestion } from "@/app/api/defend/route";
+import { GithubUrlInput } from "@/components/ui/GithubUrlInput";
+import { RoastCard } from "@/components/RoastCard";
 
 type Phase =
   | "input"
@@ -160,6 +162,8 @@ export default function DefendPage() {
   );
   const [defenseScore, setDefenseScore] = useState(0);
   const [weakSpots, setWeakSpots] = useState<string[]>([]);
+  const [techStack, setTechStack] = useState("");
+  const [showRoastCard, setShowRoastCard] = useState(false);
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -198,6 +202,7 @@ export default function DefendPage() {
       }
 
       setQuestions(defendData.questions);
+      setTechStack(defendData.techStack ?? "");
       setCurrentIdx(0);
       setCurrentAnswer("");
       setAnswered([]);
@@ -300,6 +305,8 @@ export default function DefendPage() {
     setCurrentScore(null);
     setDefenseScore(0);
     setWeakSpots([]);
+    setTechStack("");
+    setShowRoastCard(false);
     setExpandedQuestion(null);
   }
 
@@ -333,18 +340,13 @@ export default function DefendPage() {
           <div className="rounded-lg border border-border bg-card p-6 space-y-4">
             <label className="block space-y-2">
               <span className="text-sm font-medium text-foreground">GitHub repository URL</span>
-              <div className="flex items-center gap-2 rounded-lg border border-input bg-background px-3 py-2 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1">
-                <Github className="h-4 w-4 text-muted-foreground shrink-0" />
-                <input
-                  type="url"
-                  value={repoUrl}
-                  onChange={(e) => setRepoUrl(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleStart()}
-                  placeholder="https://github.com/owner/repo"
-                  className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                  autoFocus
-                />
-              </div>
+              <GithubUrlInput
+                value={repoUrl}
+                onChange={setRepoUrl}
+                onSubmit={handleStart}
+                placeholder="https://github.com/owner/repo"
+                autoFocus
+              />
               <p className="text-xs text-muted-foreground">Public repos only · no sign-up required</p>
             </label>
 
@@ -595,6 +597,25 @@ export default function DefendPage() {
               </div>
             ))}
           </div>
+
+          {/* Roast card */}
+          <button
+            onClick={() => setShowRoastCard(!showRoastCard)}
+            className="w-full flex items-center justify-center gap-2 border border-border text-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-accent transition-colors"
+          >
+            <Flame className="h-4 w-4 text-orange-500" />
+            {showRoastCard ? "Hide Roast Card" : "Generate Roast Card"}
+          </button>
+
+          {showRoastCard && (
+            <RoastCard
+              score={defenseScore}
+              scoreLabel="Defense Score"
+              repoName={repoUrl.replace(/\/$/, "").split("/").pop() ?? "repo"}
+              topFindings={weakSpots.slice(0, 3)}
+              techStack={techStack}
+            />
+          )}
 
           {/* Reset */}
           <button
