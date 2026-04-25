@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Code2, Sparkles, BookOpen, GitCompare, MessageSquare, GitBranch, Lock, Shield, ChevronRight, CheckCircle2 } from "lucide-react";
+import { Code2, Sparkles, BookOpen, GitCompare, MessageSquare, GitBranch, Lock, Shield, ChevronRight, CheckCircle2, Zap } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 
 const features = [
@@ -34,6 +34,11 @@ const features = [
     description: "Point at a GitHub repo and get grilled with 5 adversarial questions — scored 0–100 per answer.",
   },
   {
+    icon: <Zap className="h-5 w-5 text-yellow-500" />,
+    title: "Vibe Check",
+    description: "6 ship-readiness checks: secrets, env vars, README, debug logs, error handling, and pinned deps. Ship Score out of 100.",
+  },
+  {
     icon: <Lock className="h-5 w-5 text-slate-500" />,
     title: "Privacy Mode",
     description: "Your code never touches our database. Opt in for sensitive code — no data stored, no training.",
@@ -53,6 +58,9 @@ export default function LandingPage() {
               <div className="flex items-center gap-3">
                 <Link href="/explain" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                   App
+                </Link>
+                <Link href="/vibe-check" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Vibe Check
                 </Link>
                 <Link
                   href="/explain"
@@ -101,6 +109,13 @@ export default function LandingPage() {
               >
                 <Shield className="h-4 w-4" />
                 Defend a repo
+              </Link>
+              <Link
+                href="/vibe-check"
+                className="flex items-center gap-2 border border-border px-6 py-3 rounded-lg font-semibold hover:bg-accent transition-colors text-sm"
+              >
+                <Zap className="h-4 w-4 text-yellow-500" />
+                Vibe check a repo
               </Link>
             </div>
           </section>

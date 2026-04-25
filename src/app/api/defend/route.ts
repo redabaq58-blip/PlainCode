@@ -212,7 +212,7 @@ export async function POST(req: NextRequest) {
     const analysis = await analyzeRepo(repoCode);
     const questions = await generateQuestions(repoCode, analysis);
     const refined = await validateAndRefineQuestions(questions, repoCode);
-    return NextResponse.json({ questions: refined });
+    return NextResponse.json({ questions: refined, techStack: analysis.techStack });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to generate questions" },
