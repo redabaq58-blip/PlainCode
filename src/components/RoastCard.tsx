@@ -59,8 +59,10 @@ export function RoastCard({
   }
 
   return (
-    <div className="flex flex-col items-center gap-3 w-full overflow-x-auto">
-      {/* Card — always dark, fixed width for consistent PNG output */}
+    <div className="w-full space-y-3">
+      {/* Block scroll container — card flows from left edge so mobile can scroll right,
+          margin:auto centers it when the viewport is wide enough */}
+      <div className="w-full overflow-x-auto pb-1">
       <div
         id={id}
         style={{
@@ -69,7 +71,7 @@ export function RoastCard({
           boxShadow: `0 0 0 1px ${color}1a, 0 24px 64px rgba(0,0,0,0.6)`,
           fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
           width: "680px",
-          flexShrink: 0,
+          margin: "0 auto",
           borderRadius: "16px",
           padding: "36px",
         }}
@@ -201,15 +203,18 @@ export function RoastCard({
           </p>
         </div>
       </div>
+      </div>{/* end scroll container */}
 
       {/* Download button — outside the card so it doesn't appear in the PNG */}
-      <button
-        onClick={handleDownload}
-        className="flex items-center gap-2 border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent transition-colors"
-      >
-        <Download className="h-4 w-4" />
-        Download as PNG
-      </button>
+      <div className="flex justify-center">
+        <button
+          onClick={handleDownload}
+          className="flex items-center gap-2 border border-border text-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-accent transition-colors"
+        >
+          <Download className="h-4 w-4" />
+          Download as PNG
+        </button>
+      </div>
     </div>
   );
 }
