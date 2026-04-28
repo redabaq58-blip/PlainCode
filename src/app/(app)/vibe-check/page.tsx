@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { GithubUrlInput } from "@/components/ui/GithubUrlInput";
 import { RoastCard } from "@/components/RoastCard";
+import { FixPromptCard } from "@/components/FixPromptCard";
 import type { CheckResult } from "@/app/api/vibe-check/route";
 
 type Phase = "input" | "fetching" | "analyzing" | "results";
@@ -177,6 +178,7 @@ export default function ShipCheckPage() {
   const [techStack, setTechStack] = useState("");
   const [checks, setChecks] = useState<CheckResult[]>([]);
   const [showRoastCard, setShowRoastCard] = useState(false);
+  const [expandedFix, setExpandedFix] = useState<number | null>(null);
 
   async function handleStart() {
     if (!repoUrl.trim()) return;
@@ -231,6 +233,7 @@ export default function ShipCheckPage() {
     setTechStack("");
     setChecks([]);
     setShowRoastCard(false);
+    setExpandedFix(null);
   }
 
   const repoName = repoUrl.replace(/\/$/, "").split("/").pop() ?? "repo";
@@ -388,6 +391,12 @@ export default function ShipCheckPage() {
               const meta = CHECKS_META.find((m) => m.category === check.category);
               const maxPts = CHECK_POINTS[check.category] ?? 15;
               const Icon = meta?.Icon ?? Zap;
+              const firstFinding = check.findings[0];
+              const fileRef = firstFinding
+                ? `${firstFinding.file}${firstFinding.line ? `:${firstFinding.line}` : ""}`
+                : "";
+              const issue = firstFinding?.detail || check.name;
+              const fixOpen = expandedFix === check.id;
 
               return (
                 <div key={check.id} className="p-4 space-y-2">
@@ -429,6 +438,26 @@ export default function ShipCheckPage() {
                         </li>
                       ))}
                     </ul>
+                  )}
+
+                  {!check.passed && (
+                    <div className="ml-7 space-y-2">
+                      <button
+                        onClick={() => setExpandedFix(fixOpen ? null : check.id)}
+                        className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+                      >
+                        {fixOpen ? "Hide Fix Prompt" : "Show Fix Prompt →"}
+                      </button>
+                      {fixOpen && (
+                        <FixPromptCard
+                          failedCheck={check.name}
+                          fileReference={fileRef}
+                          specificIssue={issue}
+                          checkCategory={check.category}
+                          mode="fix"
+                        />
+                      )}
+                    </div>
                   )}
                 </div>
               );
