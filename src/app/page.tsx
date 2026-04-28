@@ -68,17 +68,17 @@ const tools = [
   {
     icon: <Zap className="h-6 w-6 text-yellow-500" />,
     accent: "border-yellow-500",
-    name: "Vibe Check",
+    name: "Ship Check",
     badge: "Pre-ship audit",
     badgeColor: "bg-yellow-500/10 text-yellow-600",
     href: "/vibe-check",
-    what: "Automated ship-readiness audit of any public repo. Checks for hardcoded secrets, undocumented env vars, missing README, debug logs in production, unhandled async errors, and unpinned dependencies.",
+    what: "Paste a public repo URL and get a Ship Score out of 100 — plus a verdict from \"Do Not Ship\" to \"Payment Ready\". Six automated checks (secrets, env vars, README, debug logs, error handling, dependencies) tell you exactly what to fix before you go live.",
     steps: [
       "Paste a public GitHub repository URL",
       "Wait ~20 seconds while 6 checks run",
-      "Get a Ship Score out of 100 with file-level findings",
+      "Get your verdict and a file-level breakdown of every failure",
     ],
-    cta: "Try Vibe Check",
+    cta: "Run Ship Check",
     ctaClass: "bg-yellow-500 hover:bg-yellow-600 text-white",
   },
 ];
@@ -123,9 +123,9 @@ const features = [
   },
   {
     icon: <Zap className="h-5 w-5 text-yellow-500" />,
-    title: "Vibe Check",
+    title: "Ship Check",
     description:
-      "6 automated checks in ~20 seconds: hardcoded secrets (25 pts), env var docs, README setup guide, debug console.logs in prod, try/catch coverage, and pinned dependency versions.",
+      "6 automated checks in ~20 seconds. Get a verdict — Do Not Ship, Prototype Only, Demo Ready, Public Beta Ready, Launch Ready, or Payment Ready — with file-level findings for every failure.",
   },
   {
     icon: <Lock className="h-5 w-5 text-slate-500" />,
@@ -152,7 +152,7 @@ export default function LandingPage() {
               App
             </Link>
             <Link href="/vibe-check" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Vibe Check
+              Ship Check
             </Link>
             <Link
               href="/explain"
@@ -207,7 +207,7 @@ export default function LandingPage() {
             className="flex items-center gap-2 border border-border px-6 py-3 rounded-lg font-semibold hover:bg-accent transition-colors text-sm"
           >
             <Zap className="h-4 w-4 text-yellow-500" />
-            Vibe check a repo
+            Ship check a repo
           </Link>
         </div>
       </section>
@@ -376,7 +376,7 @@ export default function LandingPage() {
             className="inline-flex items-center gap-2 border border-border px-8 py-3 rounded-lg font-semibold hover:bg-accent transition-colors"
           >
             <Zap className="h-4 w-4 text-yellow-500" />
-            Vibe check a repo
+            Ship check a repo
           </Link>
         </div>
       </section>

@@ -99,6 +99,45 @@ function scoreColor(score: number): string {
   return "text-red-500";
 }
 
+type VerdictTier = {
+  label: string;
+  color: string;
+  context: string;
+};
+
+function getVerdictTier(score: number): VerdictTier {
+  if (score <= 39) return {
+    label: "Do Not Ship",
+    color: "text-red-500",
+    context: "Your repo has critical issues that would expose you or your users to real risk. Fix these before showing anyone.",
+  };
+  if (score <= 59) return {
+    label: "Prototype Only",
+    color: "text-orange-500",
+    context: "Safe for internal testing, but not ready for real users. Keep building before you share the link.",
+  };
+  if (score <= 74) return {
+    label: "Demo Ready",
+    color: "text-yellow-500",
+    context: "You can show this to friends and early users, but do not take payments yet.",
+  };
+  if (score <= 84) return {
+    label: "Public Beta Ready",
+    color: "text-blue-500",
+    context: "Good enough for a public beta. Gather real feedback and fix the remaining issues before a full launch.",
+  };
+  if (score <= 94) return {
+    label: "Launch Ready",
+    color: "text-green-500",
+    context: "You're clear to launch. Minor issues remain but nothing that blocks going live with real users.",
+  };
+  return {
+    label: "Payment Ready",
+    color: "text-emerald-400",
+    context: "Production-grade. You can confidently take payments and onboard paying customers.",
+  };
+}
+
 function scoreRingColor(score: number): string {
   if (score >= 80) return "stroke-green-500";
   if (score >= 60) return "stroke-amber-500";
@@ -129,7 +168,7 @@ function ScoreRing({ score }: { score: number }) {
   );
 }
 
-export default function VibeCheckPage() {
+export default function ShipCheckPage() {
   const [phase, setPhase] = useState<Phase>("input");
   const [repoUrl, setRepoUrl] = useState("");
   const [error, setError] = useState("");
@@ -208,11 +247,12 @@ export default function VibeCheckPage() {
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
           <Zap className="h-6 w-6 text-yellow-500" />
-          Vibe Check
+          Ship Check
         </h1>
         <p className="text-sm text-muted-foreground">
-          6 ship-readiness checks on any public GitHub repo — secrets, docs, debug
-          logs, error handling, and more. Scored out of 100.
+          6 automated checks on any public GitHub repo. Get a Ship Score out of 100
+          and a verdict — from "Do Not Ship" to "Payment Ready" — so you know exactly
+          where you stand before going live.
         </p>
       </div>
 
@@ -246,7 +286,7 @@ export default function VibeCheckPage() {
               className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Zap className="h-4 w-4" />
-              Run Vibe Check
+              Run Ship Check
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -331,6 +371,15 @@ export default function VibeCheckPage() {
                 {passedCount} of 6 checks passed
               </p>
             </div>
+            {(() => {
+              const verdict = getVerdictTier(shipScore);
+              return (
+                <div className="space-y-1">
+                  <p className={`text-base font-bold ${verdict.color}`}>{verdict.label}</p>
+                  <p className="text-xs text-muted-foreground max-w-xs">{verdict.context}</p>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Check results */}
