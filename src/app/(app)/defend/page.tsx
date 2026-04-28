@@ -12,6 +12,7 @@ import {
 import type { DefendQuestion } from "@/app/api/defend/route";
 import { GithubUrlInput } from "@/components/ui/GithubUrlInput";
 import { RoastCard } from "@/components/RoastCard";
+import { FixPromptCard } from "@/components/FixPromptCard";
 
 type Phase =
   | "input"
@@ -592,6 +593,15 @@ export default function DefendPage() {
                       </span>
                       <span className="text-muted-foreground">{a.feedback}</span>
                     </div>
+                    {a.score < 60 && (
+                      <FixPromptCard
+                        failedCheck={a.category}
+                        fileReference=""
+                        specificIssue={a.category}
+                        checkCategory={a.category}
+                        mode="review"
+                      />
+                    )}
                   </div>
                 )}
               </div>
