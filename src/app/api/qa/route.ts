@@ -5,6 +5,7 @@ import { streamQAAnswer } from "@/lib/ai/qa";
 const schema = z.object({
   code: z.string().max(6000).default(""),
   explanation: z.string().max(3000).default(""),
+  context: z.string().max(6000).default(""),
   messages: z.array(z.object({
     role: z.enum(["user", "assistant"]),
     content: z.string().max(2000),
@@ -19,7 +20,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const { code, explanation, messages, question } = parsed.data;
+  const { code, explanation, context, messages, question } = parsed.data;
 
   const allMessages = [...messages, { role: "user" as const, content: question }];
 
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        for await (const delta of streamQAAnswer(code, explanation, allMessages, false)) {
+        for await (const delta of streamQAAnswer(code, explanation, allMessages, false, context || undefined)) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta })}\n\n`));
         }
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true })}\n\n`));

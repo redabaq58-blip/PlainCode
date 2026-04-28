@@ -9,14 +9,19 @@ export async function* streamQAAnswer(
   code: string,
   explanation: string,
   messages: QAMessage[],
-  privacyMode: boolean
+  privacyMode: boolean,
+  context?: string
 ): AsyncGenerator<string> {
   const client = getAnthropicClient(privacyMode);
 
   // Keep last 6 message pairs (12 messages) to manage context window
   const recentMessages = messages.slice(-12);
 
-  const systemPrompt = `You are a helpful assistant that answers questions about a specific code snippet.
+  const systemPrompt = context
+    ? `You are helping a developer understand their code analysis results. Answer concisely and actionably. Reference specific files, scores, and findings from the context below.
+
+${context.slice(0, 5000)}`
+    : `You are a helpful assistant that answers questions about a specific code snippet.
 
 The code being discussed:
 \`\`\`

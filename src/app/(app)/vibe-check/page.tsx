@@ -21,6 +21,7 @@ import { FixPromptCard } from "@/components/FixPromptCard";
 import { FilesMap, type FileEntry } from "@/components/FilesMap";
 import { RepairPlan, type RepairStep } from "@/components/RepairPlan";
 import { FlowDiagram } from "@/components/output/FlowDiagram";
+import { FollowUpQA } from "@/components/FollowUpQA";
 import type { CheckResult } from "@/app/api/vibe-check/route";
 
 type Phase = "input" | "fetching" | "analyzing" | "results";
@@ -314,6 +315,36 @@ export default function ShipCheckPage() {
       .map(({ _order: _o, ...step }) => step);
   }, [checks]);
 
+  const qaContext = (() => {
+    if (checks.length === 0) return "";
+    const verdict = getVerdictTier(shipScore);
+    const failedChecks = checks.filter((c) => !c.passed);
+    const passedChecks = checks.filter((c) => c.passed);
+    return [
+      `Repository: ${repoUrl}`,
+      `Ship Score: ${shipScore}/100`,
+      `Verdict: ${verdict.label}`,
+      `Tech Stack: ${techStack}`,
+      "",
+      "Check Results:",
+      ...passedChecks.map((c) => `✓ ${c.name} — PASSED`),
+      ...failedChecks.map((c) => `✗ ${c.name} — FAILED`),
+      "",
+      "Failed Check Details:",
+      ...failedChecks.map((c) =>
+        `${c.name}: ${c.findings.map((f) => `${f.file}${f.line ? `:${f.line}` : ""} — ${f.detail}`).join("; ") || "no specific file found"}`
+      ),
+    ].join("\n");
+  })();
+
+  const qaSuggestions = (() => {
+    const firstFailed = checks.find((c) => !c.passed);
+    const suggestions = ["What should I fix first?"];
+    if (firstFailed) suggestions.unshift(`Why did I fail the ${firstFailed.name} check?`);
+    suggestions.push(`Is ${shipScore}/100 good enough to show to users?`);
+    return suggestions;
+  })();
+
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-8">
       {/* Header */}
@@ -546,6 +577,16 @@ export default function ShipCheckPage() {
               );
             })}
           </div>
+
+          {/* Follow-up Q&A */}
+          {qaContext && (
+            <FollowUpQA
+              context={qaContext}
+              title="Questions About Your Results?"
+              placeholder="e.g. Why did I fail the secrets check?"
+              suggestions={qaSuggestions}
+            />
+          )}
 
           {/* Roast card button */}
           <button
