@@ -14,6 +14,7 @@ import { GithubUrlInput } from "@/components/ui/GithubUrlInput";
 import { RoastCard } from "@/components/RoastCard";
 import { FixPromptCard } from "@/components/FixPromptCard";
 import { FlowDiagram } from "@/components/output/FlowDiagram";
+import { FollowUpQA } from "@/components/FollowUpQA";
 
 type Phase =
   | "input"
@@ -618,6 +619,34 @@ export default function DefendPage() {
               </div>
             ))}
           </div>
+
+          {/* Follow-up Q&A */}
+          {answered.length > 0 && (() => {
+            const lowestScore = answered.reduce((min, a) => a.score < min.score ? a : min, answered[0]);
+            const qaContext = [
+              `Repository: ${repoUrl}`,
+              `Defense Score: ${defenseScore}/100`,
+              weakSpots.length > 0 ? `Weak spots: ${weakSpots.join(", ")}` : "",
+              "",
+              "Question Results:",
+              ...answered.map((a) =>
+                `Q${a.id} (${a.category}): ${a.score}/100\nQuestion: ${a.question}\nAnswer: ${a.answer}\nFeedback: ${a.feedback}`
+              ),
+            ].filter(Boolean).join("\n");
+            const suggestions = [
+              `How do I improve my ${lowestScore.category} score?`,
+              "What should I study to defend this codebase better?",
+              "Which answer was closest to what you were looking for?",
+            ];
+            return (
+              <FollowUpQA
+                context={qaContext}
+                title="Questions About Your Defense?"
+                placeholder="e.g. Why did I score low on the security question?"
+                suggestions={suggestions}
+              />
+            );
+          })()}
 
           {/* Roast card */}
           <button
