@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAnthropicClient } from "@/lib/ai/client";
+import { generateArchitectureDiagram } from "@/lib/ai/architecture-diagram";
 
 const schema = z.object({
   repoCode: z.string().min(100).max(35_000),
@@ -211,8 +212,19 @@ export async function POST(req: NextRequest) {
     const { repoCode } = parsed.data;
     const analysis = await analyzeRepo(repoCode);
     const questions = await generateQuestions(repoCode, analysis);
-    const refined = await validateAndRefineQuestions(questions, repoCode);
-    return NextResponse.json({ questions: refined, techStack: analysis.techStack });
+    const [refined, architectureDiagram] = await Promise.all([
+      validateAndRefineQuestions(questions, repoCode),
+      generateArchitectureDiagram(repoCode, {
+        techStack: analysis.techStack,
+        architecture: analysis.architecture,
+        dangerHints: analysis.keyRisks,
+      }),
+    ]);
+    return NextResponse.json({
+      questions: refined,
+      techStack: analysis.techStack,
+      architectureDiagram,
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to generate questions" },

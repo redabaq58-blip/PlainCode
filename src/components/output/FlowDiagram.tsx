@@ -4,6 +4,8 @@ import { GitBranch, Download } from "lucide-react";
 
 interface Props {
   diagram: string;
+  title?: string;
+  downloadName?: string;
 }
 
 function stripCodeFences(raw: string): string {
@@ -60,7 +62,7 @@ function cleanupMermaidErrors() {
   });
 }
 
-export function FlowDiagram({ diagram }: Props) {
+export function FlowDiagram({ diagram, title = "Flow Diagram", downloadName = "flow-diagram.svg" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState(false);
   const [svg, setSvg] = useState("");
@@ -139,7 +141,7 @@ export function FlowDiagram({ diagram }: Props) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "flow-diagram.svg";
+    a.download = downloadName;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -152,7 +154,7 @@ export function FlowDiagram({ diagram }: Props) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           <GitBranch className="h-4 w-4 text-primary" />
-          Flow Diagram
+          {title}
         </div>
         {svg && (
           <button

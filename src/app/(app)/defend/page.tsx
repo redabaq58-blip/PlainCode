@@ -13,6 +13,7 @@ import type { DefendQuestion } from "@/app/api/defend/route";
 import { GithubUrlInput } from "@/components/ui/GithubUrlInput";
 import { RoastCard } from "@/components/RoastCard";
 import { FixPromptCard } from "@/components/FixPromptCard";
+import { FlowDiagram } from "@/components/output/FlowDiagram";
 
 type Phase =
   | "input"
@@ -164,6 +165,7 @@ export default function DefendPage() {
   const [defenseScore, setDefenseScore] = useState(0);
   const [weakSpots, setWeakSpots] = useState<string[]>([]);
   const [techStack, setTechStack] = useState("");
+  const [architectureDiagram, setArchitectureDiagram] = useState("");
   const [showRoastCard, setShowRoastCard] = useState(false);
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -204,6 +206,7 @@ export default function DefendPage() {
 
       setQuestions(defendData.questions);
       setTechStack(defendData.techStack ?? "");
+      setArchitectureDiagram(defendData.architectureDiagram ?? "");
       setCurrentIdx(0);
       setCurrentAnswer("");
       setAnswered([]);
@@ -307,6 +310,7 @@ export default function DefendPage() {
     setDefenseScore(0);
     setWeakSpots([]);
     setTechStack("");
+    setArchitectureDiagram("");
     setShowRoastCard(false);
     setExpandedQuestion(null);
   }
@@ -540,6 +544,13 @@ export default function DefendPage() {
               </p>
             </div>
           </div>
+
+          {/* Architecture diagram */}
+          <FlowDiagram
+            diagram={architectureDiagram}
+            title="Your Architecture"
+            downloadName="architecture.svg"
+          />
 
           {/* Weak spots */}
           {weakSpots.length > 0 && (
