@@ -35,7 +35,7 @@ export function Navbar() {
             href="/vibe-check"
             className="text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-md hover:bg-accent"
           >
-            Vibe Check
+            Ship Check
           </Link>
           <ThemeToggle />
         </div>
