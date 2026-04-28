@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAnthropicClient } from "@/lib/ai/client";
+import { generateArchitectureDiagram } from "@/lib/ai/architecture-diagram";
 
 const schema = z.object({
   repoCode: z.string().min(100).max(35_000),
@@ -235,7 +236,15 @@ export async function POST(req: NextRequest) {
     const { repoCode } = parsed.data;
     const stack = await analyzeStack(repoCode);
     const checks = await runChecks(repoCode, stack);
-    const validated = await validateFindings(checks, repoCode);
+    const dangerHints = checks.filter((c) => !c.passed).map((c) => c.name);
+    const [validated, architectureDiagram] = await Promise.all([
+      validateFindings(checks, repoCode),
+      generateArchitectureDiagram(repoCode, {
+        techStack: stack.techStack,
+        architecture: stack.architecture,
+        dangerHints,
+      }),
+    ]);
     const shipScore = validated.reduce(
       (sum, c) => sum + (c.passed ? (POINTS[c.category] ?? 0) : 0),
       0
@@ -244,6 +253,7 @@ export async function POST(req: NextRequest) {
       shipScore,
       techStack: stack.techStack,
       keyFiles: stack.keyFiles ?? [],
+      architectureDiagram,
       checks: validated,
     });
   } catch (err) {

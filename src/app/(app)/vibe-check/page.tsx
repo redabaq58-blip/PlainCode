@@ -20,6 +20,7 @@ import { RoastCard } from "@/components/RoastCard";
 import { FixPromptCard } from "@/components/FixPromptCard";
 import { FilesMap, type FileEntry } from "@/components/FilesMap";
 import { RepairPlan, type RepairStep } from "@/components/RepairPlan";
+import { FlowDiagram } from "@/components/output/FlowDiagram";
 import type { CheckResult } from "@/app/api/vibe-check/route";
 
 type Phase = "input" | "fetching" | "analyzing" | "results";
@@ -180,6 +181,7 @@ export default function ShipCheckPage() {
   const [techStack, setTechStack] = useState("");
   const [checks, setChecks] = useState<CheckResult[]>([]);
   const [filesMap, setFilesMap] = useState<FileEntry[]>([]);
+  const [architectureDiagram, setArchitectureDiagram] = useState("");
   const [showRoastCard, setShowRoastCard] = useState(false);
   const [expandedFix, setExpandedFix] = useState<number | null>(null);
 
@@ -220,6 +222,7 @@ export default function ShipCheckPage() {
       setShipScore(auditData.shipScore);
       setTechStack(auditData.techStack ?? "");
       setFilesMap(auditData.keyFiles ?? []);
+      setArchitectureDiagram(auditData.architectureDiagram ?? "");
       setChecks((auditData.checks as CheckResult[]).sort((a, b) => a.id - b.id));
       setPhase("results");
     } catch {
@@ -237,6 +240,7 @@ export default function ShipCheckPage() {
     setTechStack("");
     setChecks([]);
     setFilesMap([]);
+    setArchitectureDiagram("");
     setShowRoastCard(false);
     setExpandedFix(null);
   }
@@ -453,6 +457,13 @@ export default function ShipCheckPage() {
 
           {/* Files map */}
           <FilesMap files={filesMap} />
+
+          {/* Architecture diagram */}
+          <FlowDiagram
+            diagram={architectureDiagram}
+            title="Architecture Overview"
+            downloadName="architecture.svg"
+          />
 
           {/* Repair plan */}
           <RepairPlan steps={repairSteps} />
