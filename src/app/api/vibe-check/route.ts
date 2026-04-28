@@ -29,6 +29,11 @@ export interface CheckResult {
 interface StackAnalysis {
   techStack: string;
   architecture: string;
+  keyFiles: Array<{
+    path: string;
+    importance: "critical" | "important" | "supporting";
+    reason: string;
+  }>;
 }
 
 function parseClaudeJSON<T>(text: string): T {
@@ -43,7 +48,7 @@ async function analyzeStack(repoCode: string): Promise<StackAnalysis> {
   const client = getAnthropicClient();
   const res = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 400,
+    max_tokens: 800,
     messages: [
       {
         role: "user",
@@ -54,8 +59,17 @@ ${repoCode.slice(0, 6000)}
 Return this exact shape:
 {
   "techStack": "<comma-separated: languages, frameworks, databases, key libraries you see imported>",
-  "architecture": "<one sentence describing the architectural pattern>"
-}`,
+  "architecture": "<one sentence describing the architectural pattern>",
+  "keyFiles": [
+    { "path": "<file path>", "importance": "critical", "reason": "<3-5 words: what it does>" }
+  ]
+}
+
+keyFiles rules:
+- Include 4–8 files maximum
+- importance values: "critical" (auth/payments/data writes), "important" (API routes/DB/core logic), "supporting" (config/utils/assets)
+- Only include files you can actually see in the codebase
+- reason: 3–5 words describing what the file does`,
       },
     ],
   });
@@ -65,7 +79,7 @@ Return this exact shape:
     if (!block || block.type !== "text") throw new Error("no response");
     return parseClaudeJSON<StackAnalysis>(block.text);
   } catch {
-    return { techStack: "unknown", architecture: "unknown" };
+    return { techStack: "unknown", architecture: "unknown", keyFiles: [] };
   }
 }
 
@@ -226,7 +240,12 @@ export async function POST(req: NextRequest) {
       (sum, c) => sum + (c.passed ? (POINTS[c.category] ?? 0) : 0),
       0
     );
-    return NextResponse.json({ shipScore, techStack: stack.techStack, checks: validated });
+    return NextResponse.json({
+      shipScore,
+      techStack: stack.techStack,
+      keyFiles: stack.keyFiles ?? [],
+      checks: validated,
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to audit repository" },

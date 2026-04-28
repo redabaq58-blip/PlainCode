@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Zap,
   Loader2,
@@ -18,6 +18,8 @@ import {
 import { GithubUrlInput } from "@/components/ui/GithubUrlInput";
 import { RoastCard } from "@/components/RoastCard";
 import { FixPromptCard } from "@/components/FixPromptCard";
+import { FilesMap, type FileEntry } from "@/components/FilesMap";
+import { RepairPlan, type RepairStep } from "@/components/RepairPlan";
 import type { CheckResult } from "@/app/api/vibe-check/route";
 
 type Phase = "input" | "fetching" | "analyzing" | "results";
@@ -177,6 +179,7 @@ export default function ShipCheckPage() {
   const [shipScore, setShipScore] = useState(0);
   const [techStack, setTechStack] = useState("");
   const [checks, setChecks] = useState<CheckResult[]>([]);
+  const [filesMap, setFilesMap] = useState<FileEntry[]>([]);
   const [showRoastCard, setShowRoastCard] = useState(false);
   const [expandedFix, setExpandedFix] = useState<number | null>(null);
 
@@ -216,6 +219,7 @@ export default function ShipCheckPage() {
 
       setShipScore(auditData.shipScore);
       setTechStack(auditData.techStack ?? "");
+      setFilesMap(auditData.keyFiles ?? []);
       setChecks((auditData.checks as CheckResult[]).sort((a, b) => a.id - b.id));
       setPhase("results");
     } catch {
@@ -232,6 +236,7 @@ export default function ShipCheckPage() {
     setShipScore(0);
     setTechStack("");
     setChecks([]);
+    setFilesMap([]);
     setShowRoastCard(false);
     setExpandedFix(null);
   }
@@ -243,6 +248,67 @@ export default function ShipCheckPage() {
     .filter((c) => !c.passed && c.findings.length > 0)
     .map((c) => `${c.name}: ${c.findings[0].detail}`)
     .slice(0, 3);
+
+  const repairSteps = useMemo((): RepairStep[] => {
+    const PRIORITY_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2 };
+    const CATEGORY_PRIORITY: Record<string, RepairStep["priority"]> = {
+      secrets: "critical",
+      error_handling: "high",
+      env_vars: "high",
+      readme: "medium",
+      console_logs: "medium",
+      dependencies: "medium",
+    };
+
+    return checks
+      .filter((c) => !c.passed)
+      .map((c) => {
+        const priority = CATEGORY_PRIORITY[c.category] ?? "medium";
+        const f = c.findings[0];
+        const fileRef = f ? `${f.file}${f.line ? `:${f.line}` : ""}` : "";
+        const issue = f?.detail || c.name;
+        const description = (() => {
+          switch (c.category) {
+            case "secrets":
+              return f
+                ? `Remove hardcoded secret from ${f.file}${f.line ? `:${f.line}` : ""}`
+                : "Remove hardcoded secrets from codebase";
+            case "error_handling":
+              return f ? `Add error handling in ${f.file}` : "Add try/catch to async operations";
+            case "env_vars":
+              return "Document all environment variables in README or .env.example";
+            case "readme":
+              return "Create a README with install steps and run instructions";
+            case "console_logs":
+              return f
+                ? `Remove debug console.log from ${f.file}${f.line ? `:${f.line}` : ""}`
+                : "Remove debug console.logs from production code";
+            case "dependencies":
+              return "Pin all dependency versions in package.json";
+            default:
+              return c.name;
+          }
+        })();
+        return {
+          priority,
+          description,
+          fileReference: fileRef,
+          fixPromptCard: (
+            <FixPromptCard
+              failedCheck={c.name}
+              fileReference={fileRef}
+              specificIssue={issue}
+              checkCategory={c.category}
+              mode="fix"
+            />
+          ),
+          _order: PRIORITY_ORDER[priority] ?? 3,
+        };
+      })
+      .sort((a, b) => a._order - b._order)
+      .slice(0, 7)
+      .map(({ _order: _o, ...step }) => step);
+  }, [checks]);
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 space-y-8">
@@ -384,6 +450,12 @@ export default function ShipCheckPage() {
               );
             })()}
           </div>
+
+          {/* Files map */}
+          <FilesMap files={filesMap} />
+
+          {/* Repair plan */}
+          <RepairPlan steps={repairSteps} />
 
           {/* Check results */}
           <div className="rounded-lg border border-border bg-card divide-y divide-border overflow-hidden">
