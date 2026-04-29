@@ -7,6 +7,8 @@ interface RoastCardProps {
   repoName: string;
   topFindings: string[];
   techStack: string;
+  builderType?: string;
+  assessmentText?: string;
   id?: string;
 }
 
@@ -26,12 +28,23 @@ function truncate(s: string, n = 68): string {
   return s.length > n ? s.slice(0, n) + "…" : s;
 }
 
+function builderTypeHex(builderType: string): string {
+  if (builderType === "Prompt Tourist") return "#ef4444";
+  if (builderType === "Vibe Coder") return "#f97316";
+  if (builderType === "Dangerous Shipper") return "#eab308";
+  if (builderType === "Real Builder") return "#3b82f6";
+  if (builderType === "Technical Founder") return "#22c55e";
+  return "#94a3b8";
+}
+
 export function RoastCard({
   score,
   scoreLabel,
   repoName,
   topFindings,
   techStack,
+  builderType,
+  assessmentText,
   id = "roast-card",
 }: RoastCardProps) {
   const color = scoreHex(score);
@@ -118,7 +131,7 @@ export function RoastCard({
               {scoreLabel.toUpperCase()}
             </div>
           </div>
-          <div style={{ flex: 1, marginBottom: "20px" }}>
+          <div style={{ flex: 1, marginBottom: builderType ? "12px" : "20px" }}>
             <div
               style={{
                 height: "6px",
@@ -140,6 +153,25 @@ export function RoastCard({
               <span style={{ fontSize: "11px", color: "#334155" }}>0</span>
               <span style={{ fontSize: "11px", color: "#334155" }}>100</span>
             </div>
+            {builderType && (
+              <div style={{ marginTop: "10px" }}>
+                <span
+                  style={{
+                    display: "inline-block",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
+                    padding: "3px 10px",
+                    borderRadius: "999px",
+                    backgroundColor: `${builderTypeHex(builderType)}22`,
+                    color: builderTypeHex(builderType),
+                    border: `1px solid ${builderTypeHex(builderType)}44`,
+                  }}
+                >
+                  {builderType}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -175,6 +207,39 @@ export function RoastCard({
             <p style={{ fontSize: "13px", color: "#334155" }}>No critical issues found</p>
           )}
         </div>
+
+        {/* Assessment */}
+        {assessmentText && (
+          <>
+            <div style={{ borderTop: "1px solid #1e293b", marginBottom: "20px" }} />
+            <div style={{ marginBottom: "24px" }}>
+              <p
+                style={{
+                  fontSize: "10px",
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  color: "#475569",
+                  textTransform: "uppercase",
+                  marginBottom: "10px",
+                }}
+              >
+                Assessment
+              </p>
+              <p
+                style={{
+                  fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                  fontSize: "12px",
+                  color: "#94a3b8",
+                  lineHeight: 1.6,
+                }}
+              >
+                {assessmentText.length > 280
+                  ? assessmentText.slice(0, 277) + "…"
+                  : assessmentText}
+              </p>
+            </div>
+          </>
+        )}
 
         {/* Divider */}
         <div style={{ borderTop: "1px solid #1e293b", marginBottom: "20px" }} />

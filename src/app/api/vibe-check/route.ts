@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAnthropicClient } from "@/lib/ai/client";
 import { generateArchitectureDiagram } from "@/lib/ai/architecture-diagram";
+import { generateAssessment } from "@/lib/ai/generate-assessment";
 
 const schema = z.object({
   repoCode: z.string().min(100).max(35_000),
@@ -237,14 +238,34 @@ export async function POST(req: NextRequest) {
     const stack = await analyzeStack(repoCode);
     const checks = await runChecks(repoCode, stack);
     const dangerHints = checks.filter((c) => !c.passed).map((c) => c.name);
-    const [validated, architectureDiagram] = await Promise.all([
-      validateFindings(checks, repoCode),
-      generateArchitectureDiagram(repoCode, {
-        techStack: stack.techStack,
-        architecture: stack.architecture,
-        dangerHints,
-      }),
-    ]);
+    // Preliminary score — pass/fail never changes during validation
+    const prelimScore = checks.reduce(
+      (sum, c) => sum + (c.passed ? (POINTS[c.category] ?? 0) : 0),
+      0
+    );
+    const failedCheckNames = checks.filter((c) => !c.passed).map((c) => c.name);
+    const fileFindings = checks
+      .filter((c) => !c.passed)
+      .flatMap((c) =>
+        c.findings.slice(0, 2).map(
+          (f) => `${f.file}${f.line ? `:${f.line}` : ""}: ${f.detail}`
+        )
+      )
+      .slice(0, 5);
+    const [validated, architectureDiagram, { assessment, builderType }] =
+      await Promise.all([
+        validateFindings(checks, repoCode),
+        generateArchitectureDiagram(repoCode, {
+          techStack: stack.techStack,
+          architecture: stack.architecture,
+          dangerHints,
+        }),
+        generateAssessment({
+          score: prelimScore,
+          failedChecks: failedCheckNames,
+          fileFindings,
+        }),
+      ]);
     const shipScore = validated.reduce(
       (sum, c) => sum + (c.passed ? (POINTS[c.category] ?? 0) : 0),
       0
@@ -255,6 +276,8 @@ export async function POST(req: NextRequest) {
       keyFiles: stack.keyFiles ?? [],
       architectureDiagram,
       checks: validated,
+      assessment,
+      builderType,
     });
   } catch (err) {
     return NextResponse.json(

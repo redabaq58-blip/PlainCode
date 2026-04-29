@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getAnthropicClient } from "@/lib/ai/client";
+import { generateAssessment } from "@/lib/ai/generate-assessment";
 
 function parseClaudeJSON<T>(text: string): T {
   const cleaned = text
@@ -43,13 +44,22 @@ export async function POST(req: NextRequest) {
       )
       .join("\n\n");
 
-    const res = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 300,
-      messages: [
-        {
-          role: "user",
-          content: `Based on these 5 technical defense answers, identify the 3 most important gaps in the developer's understanding of their own codebase.
+    const weakAnswers = answers.filter((a) => a.score < 60);
+    const failedChecks = weakAnswers.map(
+      (a) => `${a.category}: ${a.score}/100`
+    );
+    const fileFindings = weakAnswers
+      .map((a) => `${a.category}: ${a.feedback}`)
+      .slice(0, 5);
+
+    const [weakSpotsRes, { assessment, builderType }] = await Promise.all([
+      client.messages.create({
+        model: "claude-haiku-4-5-20251001",
+        max_tokens: 300,
+        messages: [
+          {
+            role: "user",
+            content: `Based on these 5 technical defense answers, identify the 3 most important gaps in the developer's understanding of their own codebase.
 
 ANSWERS (worst to best):
 ${summary}
@@ -64,17 +74,25 @@ Return ONLY valid JSON (no markdown):
     "<specific weakness 3>"
   ]
 }`,
-        },
-      ],
-    });
+          },
+        ],
+      }),
+      generateAssessment({
+        score: defenseScore,
+        failedChecks,
+        fileFindings,
+      }),
+    ]);
 
-    const block = res.content[0];
+    const block = weakSpotsRes.content[0];
     if (!block || block.type !== "text") throw new Error("No response");
     const result = parseClaudeJSON<{ weakSpots: string[] }>(block.text);
 
     return NextResponse.json({
       defenseScore,
       weakSpots: result.weakSpots,
+      assessment,
+      builderType,
     });
   } catch (err) {
     return NextResponse.json(

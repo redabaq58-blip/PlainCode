@@ -58,6 +58,23 @@ const CATEGORY_STYLES: Record<string, { badge: string; dot: string }> = {
   },
 };
 
+function getBuilderTypeStyle(builderType: string): string {
+  switch (builderType) {
+    case "Prompt Tourist":
+      return "bg-red-500/10 text-red-500 border-red-500/30";
+    case "Vibe Coder":
+      return "bg-orange-500/10 text-orange-500 border-orange-500/30";
+    case "Dangerous Shipper":
+      return "bg-yellow-500/10 text-yellow-500 border-yellow-500/30";
+    case "Real Builder":
+      return "bg-blue-500/10 text-blue-500 border-blue-500/30";
+    case "Technical Founder":
+      return "bg-emerald-500/10 text-emerald-500 border-emerald-500/30";
+    default:
+      return "bg-muted text-muted-foreground border-border";
+  }
+}
+
 function scoreColor(score: number): string {
   if (score >= 80) return "text-green-500";
   if (score >= 60) return "text-amber-500";
@@ -167,6 +184,8 @@ export default function DefendPage() {
   const [weakSpots, setWeakSpots] = useState<string[]>([]);
   const [techStack, setTechStack] = useState("");
   const [architectureDiagram, setArchitectureDiagram] = useState("");
+  const [assessment, setAssessment] = useState("");
+  const [builderType, setBuilderType] = useState("");
   const [showRoastCard, setShowRoastCard] = useState(false);
   const [expandedQuestion, setExpandedQuestion] = useState<number | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -289,6 +308,8 @@ export default function DefendPage() {
         }
         setDefenseScore(data.defenseScore);
         setWeakSpots(data.weakSpots ?? []);
+        setAssessment(data.assessment ?? "");
+        setBuilderType(data.builderType ?? "");
         setPhase("results");
       } catch {
         setError("Connection error generating summary.");
@@ -312,6 +333,8 @@ export default function DefendPage() {
     setWeakSpots([]);
     setTechStack("");
     setArchitectureDiagram("");
+    setAssessment("");
+    setBuilderType("");
     setShowRoastCard(false);
     setExpandedQuestion(null);
   }
@@ -648,14 +671,40 @@ export default function DefendPage() {
             );
           })()}
 
-          {/* Roast card */}
-          <button
-            onClick={() => setShowRoastCard(!showRoastCard)}
-            className="w-full flex items-center justify-center gap-2 border border-border text-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-accent transition-colors"
-          >
-            <Flame className="h-4 w-4 text-orange-500" />
-            {showRoastCard ? "Hide Roast Card" : "Generate Roast Card"}
-          </button>
+          {/* Technical Assessment */}
+          {assessment && (
+            <div className="rounded-lg border border-border bg-card p-5 space-y-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h2 className="text-sm font-semibold text-foreground">Technical Assessment</h2>
+                {builderType && (
+                  <span
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${getBuilderTypeStyle(builderType)}`}
+                  >
+                    {builderType}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-foreground font-mono leading-relaxed">{assessment}</p>
+              <button
+                onClick={() => setShowRoastCard(!showRoastCard)}
+                className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Flame className="h-3.5 w-3.5 text-orange-500" />
+                {showRoastCard ? "Hide Share Card" : "Share Results →"}
+              </button>
+            </div>
+          )}
+
+          {/* Roast card — fallback button when no assessment */}
+          {!assessment && (
+            <button
+              onClick={() => setShowRoastCard(!showRoastCard)}
+              className="w-full flex items-center justify-center gap-2 border border-border text-foreground px-4 py-2.5 rounded-lg font-medium hover:bg-accent transition-colors"
+            >
+              <Flame className="h-4 w-4 text-orange-500" />
+              {showRoastCard ? "Hide Roast Card" : "Generate Roast Card"}
+            </button>
+          )}
 
           {showRoastCard && (
             <RoastCard
@@ -664,6 +713,8 @@ export default function DefendPage() {
               repoName={repoUrl.replace(/\/$/, "").split("/").pop() ?? "repo"}
               topFindings={weakSpots.slice(0, 3)}
               techStack={techStack}
+              builderType={builderType || undefined}
+              assessmentText={assessment || undefined}
             />
           )}
 
